@@ -1,0 +1,82 @@
+---
+title: "Data Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting data for the forecasting
+
+```{r}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+```
+
+
+
+```{r}
+# Date period for historical prices
+start_date = "2019-01-01"
+end_date = "2021-06-11"
+```
+
+
+
+```{r}
+get_and_process_ticker_data <- function(ticker_, from_, to_, output_path_){
+  
+  # Getting ticker data for selected date range 
+  data <- getSymbols(ticker_, from = from_, to= to_, auto.assign = FALSE, return.class = "data.frame")
+  
+  # Printing data set
+  print(tail(data))
+  
+  # Add auxiliary column for plotting
+  data$date <- as.Date(rownames(data))
+  
+  # Save to file
+  write.csv(x=data, file=output_path_)
+  
+  ticker_ <- gsub("\\^", "", ticker_)
+  
+  # Plotting data set
+  ggplot(data=data, aes_string(x="date", y=paste0(ticker_, ".Close"))) + 
+        geom_line(color="blue") +
+        ggtitle(paste(ticker_, "historical price")) + 
+        xlab("Date") + 
+        ylab("Price") +
+        theme(plot.title = element_text(hjust = 0.5))
+  
+}
+```
+
+
+### Microsoft data
+```{r}
+get_and_process_ticker_data("MSFT", start_date, end_date, "../data/MSFT.csv")
+```
+
+### S&P500 data
+```{r}
+get_and_process_ticker_data("^GSPC", start_date, end_date, "../data/S&P500.csv")
+```
+
+
+### Nasdaq data
+```{r}
+get_and_process_ticker_data("^IXIC", start_date, end_date, "../data/Nasdaq.csv")
+```
+
+### Apple data
+```{r}
+get_and_process_ticker_data("AAPL", start_date, end_date, "../data/AAPL.csv")
+```
+
+### Google data
+```{r}
+get_and_process_ticker_data("GOOG", start_date, end_date, "../data/GOOG.csv")
+```

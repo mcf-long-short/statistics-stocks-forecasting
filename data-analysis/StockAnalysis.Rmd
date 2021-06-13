@@ -1,0 +1,54 @@
+---
+title: "StockAnalysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## MSFT stock analysys
+
+
+```{r}
+# Importing libraries
+suppressMessages(library(quantmod))
+```
+
+
+```{r}
+# Reading data set
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+
+# Printing data
+tail(MSFT)
+```
+
+```{r}
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+
+# Plotting only closing price
+chartSeries(MSFT_xts[,4],theme="white",major.tick="months")
+
+# Plotting prices and volume
+chartSeries(MSFT_xts,theme="white",major.tick="months") 
+```
+
+## MSFT returns
+
+```{r}
+# Calculating returns
+
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+MSFT_xts.retMonthly <- periodReturn(MSFT_xts, period = "monthly")
+MSFT_xts.retQuarterly <- periodReturn(MSFT_xts, period = "quarterly")
+```
+
+
+```{r}
+# Plotting returns
+chartSeries(MSFT_xts.retDaily, theme = "white")
+chartSeries(MSFT_xts.retMonthly, theme = "white")
+chartSeries(MSFT_xts.retQuarterly, theme = "white")
+```
+
