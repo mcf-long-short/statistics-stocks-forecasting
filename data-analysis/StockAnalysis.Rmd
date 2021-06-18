@@ -110,21 +110,33 @@ we can see on the plots:
   in 2020 (around 40%) and in H1 of 2021 (around 5%). 
 ```{r}
 # Plotting returns
-chartSeries(MSFT_xts.retDaily, theme = "white", name = "MSFT - Daily returns")
-chartSeries(MSFT_xts.retWeekly, theme = "white", name = "MSFT - Weekly returns")
-chartSeries(MSFT_xts.retMonthly, theme = "white", name = "MSFT - Montly returns")
-chartSeries(MSFT_xts.retQuarterly, theme = "white", name = "MSFT - Quarterly returns")
-chartSeries(MSFT_xts.retYearly, theme = "white", name = "MSFT Yearly returns")
+chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+chartSeries(MSFT_xts.retWeekly, theme = "white", up.col="blue", name = "MSFT - Weekly returns")
+chartSeries(MSFT_xts.retMonthly, theme = "white", up.col="blue", name = "MSFT - Montly returns")
+chartSeries(MSFT_xts.retQuarterly, theme = "white", up.col="blue", name = "MSFT - Quarterly returns")
+chartSeries(MSFT_xts.retYearly, theme = "white", up.col="blue", name = "MSFT Yearly returns")
 ```
 
 ### Analysing daily returns
 
+
+Here we can see some more detailed statistical properties of our data set. Some
+of the interesting thigs we could notice are:
+
+- The highest (14.21%) and the lowest (-14.73%) return MSFT had in one day during
+  period od last 615 days.
+- Simple estimation of future daily return as the mean is 0.17%
+- From the first quantile (-0.0072) and the third quantile (0.0111), which is a 
+  magnitude larger, we have an indicator that returns could be positively skewed,
+  more leaning towards positive returns, but we'll statistically calculate that
+  in the one of the next steps.
 ```{r}
 # Summary statistics
 basicStats(MSFT_xts.retDaily)
 ```
 
-
+Let's examine `average` and `annualized` daily return and volatility.
+Expected annual return is `42.2%` while expected annual volatility is `32.4%`.
 ```{r}
 # Volatility
 
@@ -140,13 +152,106 @@ print(c("Annualized volatility:", round(vol * sqrt(252), 3)))
 ```
 
 
+We calculated that the expected daily return is `0.18%`. Let's do zero mean test
+(null hypothesis is that returns are zero on average). We got that `p-value` for 
+the test is `0.0335` which is lower than the `significance level of 0.5` for
+rejecting the null hypothesis. Because of the we reject the null hypothesis and
+accept the alternative.
 
+Previously we already calculated average daily return, which is not zero. 
+But because it's not so large number, we got the p-value for the test to be 0.033, 
+which means that if the daily return was smaller than that, it wouldn't be statistically significant and we would probably accept the null hypothesis. In that case we 
+could say with statistical certainty that average daily return is 0.
 ```{r}
 # Testing zero mean return
 t.test(MSFT_xts.retDaily) 
 ```
 
+
+#### Central moments
+
+Third central moment (`skewness`) is `-0.093`. As skewness is negative and small,
+returns are slightly skewed to the left. We'll also perform skewness test.
+
+Obtained p-value for the test is less than significance level so we reject the null
+hypothesis (H0 is that it's normal distribution, thus skewness is 0).
 ```{r}
-# Calculating central moments
+SK = skewness(MSFT_xts.retDaily)  # Skewness
+T = length(MSFT_xts.retDaily)     # Sample size
+t3 = SK/sqrt(6/T)                 # Skewness test
+pval_S = 2*(1-pnorm(abs(t3)))     # p-value
+
+print(c("Skewness:", SK))
+print(c("P-value:", pval_S))
+```
+
+
+Fourth central moment (`kurtosis`) is `10.13`. In this case we're calculating
+excess kurtosis kurtosis, the reference value is 0, the same as for the skewness.
+As kurtosis is positive and large number, returns distribution is `leptokurtic`.
+That means that distribution has `fatter tails`, indicating potential `tail risk`.
+Returns that are more than three standard deviations is considered to instantiate
+tail risk.
+
+Similarly as for the skewness, we'll also perform kurtosis test. 
+Obtained p-value for the test is less than significance level so we reject the null
+hypothesis (H0 is that it's normal distribution, thus that kurtosis is 0).
+```{r}
+K = kurtosis(MSFT_xts.retDaily)  # Kurtosis
+t4 = K/sqrt(24/T)                # Kurtosis test
+pval_K = 2*(1-pnorm(abs(t4)))     # Compute p-value
+
+print(c("Kurtosis:", K))
+print(c("P-value:", pval_K))
+```
+
+#### Distribution of returns
+
+For simplification purposes, especially in academia, it is often assumed that 
+returns follow `normal distribution`. As we previously seen from calculating 
+kurtosis, assuming normal distribution could be dangerous because it ignores 
+`tail risks` for rare and extreme events.
+
+`Jarque-Bera normality test` is statistical test which checks if distribution
+follows normal distribution. For MSFT returns we got that `p-value` is really small
+(`2.2e-16`), so we reject the null hypothesis. This test takes both deviation in
+the skewness and in the kurtosis. 
+
+```{r}
+normalTest(MSFT_xts.retDaily,method='jb')
+```
+
+To have a better felling of all the metrics we calculated previously we can plot
+the `histogram of MSFT daily returns`.
+
+Just by looking at the histogram, if we remove outliers, we could say that returns
+follow normal distribution. As skewness is nearly equal to zero, histogram looks
+quite symmetric.
+
+```{r}
+hist(MSFT_xts.retDaily, nclass=35) 
+```
+
+In order to better compare distribution of MSFT daily returns to normal distribution
+we will estimate PDF and plot it together with normal distribution.
+
+What we previously calculated from Jarque-Bera normality test, we can clearly
+see that MSFT returns are deviating from normal distribution.
+```{r}
+# Obtain density estimate
+d1 = density(MSFT_xts.retDaily)
+
+# Create a sequence of x with increment 0.001.
+x = seq(-.4,.4,.001)
+
+# Plot the density
+plot(d1$x, d1$y, xlab='rtn', ylab='density', type='l') 
+
+# Create artificial data from Normal distribution
+# with mean and variance equal to sample values of MSFT returns
+y1 = dnorm(x, mean(MSFT_xts.retDaily), stdev(MSFT_xts.retDaily)) 
+
+# Add density of normal r.v.
+lines(x, y1, lty=2)
 ```
 
