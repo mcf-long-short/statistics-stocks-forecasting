@@ -4,27 +4,55 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
 ## MSFT stock analysys
 
+In this section we will do analysis of `MSF returns`, perform various statistical
+tests in order to better understand characteristics of MSFT returns and its 
+distribution during last two and a half years `01/01/2019 - 06/11/2021`.
 
 ```{r}
 # Importing libraries
 suppressMessages(library(quantmod))
+suppressMessages(library(fBasics))
 ```
 
 
+### Dataset
+
+In the table we can see with which data we're working on. Data sets used in this
+analysis are obtained with `quantmod` library.
 ```{r}
 # Reading data set
 MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
 
 # Printing data
-tail(MSFT)
+tail(MSFT[,1:5])
 ```
 
+
+### Visualizing the dataset
+
+Let's now plot the stock price for that period. 
+As you can see, only by `visually inspecting plots` to have a better feeling of 
+the MSFT price movement, without performing any statistical tests, it seems that
+`before H1 of 2020` (when Covid-19 starting to take its toll), there was a clear
+`upwards trend`. An as mentioned, because of the global pandemic there was a
+`sudden drop in price`. Later on we will compare MSFT performance compared to the
+S&P500 and Nasdaq indexes and some of MSFT's competitors in the tech sector.
+What is also interesting is that `in the H2 of 2020 and in the H1 of 2021`, 
+we can clearly see again the `upwards trend`, which resulted in `stock price surge`.
+
+On the second plot, we inspect both the `volume` and the `stock price`. First thing
+that's obvious is that there was a major `sell-off in the H1 of 2020` when Covid
+pandemic stuck. What is also interesting is that is we closely examine the plot
+we will see that occasionally there are huge volumes during some trading sessions
+that moved the price, regardless of the direction.
 ```{r}
+# Converting price series to xts objects
+# (in order to work with quantmod library)
 MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
 
 # Plotting only closing price
@@ -36,19 +64,89 @@ chartSeries(MSFT_xts,theme="white",major.tick="months")
 
 ## MSFT returns
 
+In this section we'll work with MSFT returns, performing various statistical
+tests to figure out and estimate the distribution of returns and thus to have 
+a better idea of stocks risk-reward ratio, potential tail risks and other things.
+
+### Calculating and visualizing the returns
+
+Let's first calculate the simple returns for MSFT:
+
+- Daily returns
+- Weekly returns
+- Monthly returns
+- Quarterly returns
+- Yearly returns
 ```{r}
 # Calculating returns
 
 MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+MSFT_xts.retWeekly <- periodReturn(MSFT_xts, period = "weekly")
 MSFT_xts.retMonthly <- periodReturn(MSFT_xts, period = "monthly")
 MSFT_xts.retQuarterly <- periodReturn(MSFT_xts, period = "quarterly")
+MSFT_xts.retYearly <- periodReturn(MSFT_xts, period = "yearly")
+```
+
+Now let's plot previously calculated returns. There are some interesting things
+we can see on the plots:
+
+- Daily returns - we can notice some volatility clustering meaning that there
+  are periods with high volatility, periods with low volatility and periods with
+  moderate volatility. We automatically know that there isn't a constant variance
+  of this returns, so there is some time variation in volatility.
+- Weekly returns - we can see similar behaviour here as well, but it isn't so
+  obvious as for the daily returns. For both returns we can clearly see that
+  the period with the highest volatility was in H1 of the 2020 for obvious reasons.
+  In that period there were both the highest and the lowest daily and weekly 
+  returns for two and a half year period.
+- Quarterly returns - as previously mentioned H1 of 2020 was the most volatile
+  period and that was the time when the whole market went down and in the transitioning
+  period of Q2-Q3 market started to recover. What is interesting is that Q1 of 
+  that year had a lowest quarterly return (nearly 0%) and the Q2 of the same year
+  had the highest quarterly return (nearly 30%) in the time horizon of two and a 
+  half years, which represents our data set.
+- Yearly returns - the most important thing to take it from here is that the 
+  MSFT stock returns in 2019 (astonishing nearly 60%) outperformed both the returns
+  in 2020 (around 40%) and in H1 of 2021 (around 5%). 
+```{r}
+# Plotting returns
+chartSeries(MSFT_xts.retDaily, theme = "white", name = "MSFT - Daily returns")
+chartSeries(MSFT_xts.retWeekly, theme = "white", name = "MSFT - Weekly returns")
+chartSeries(MSFT_xts.retMonthly, theme = "white", name = "MSFT - Montly returns")
+chartSeries(MSFT_xts.retQuarterly, theme = "white", name = "MSFT - Quarterly returns")
+chartSeries(MSFT_xts.retYearly, theme = "white", name = "MSFT Yearly returns")
+```
+
+### Analysing daily returns
+
+```{r}
+# Summary statistics
+basicStats(MSFT_xts.retDaily)
 ```
 
 
 ```{r}
-# Plotting returns
-chartSeries(MSFT_xts.retDaily, theme = "white")
-chartSeries(MSFT_xts.retMonthly, theme = "white")
-chartSeries(MSFT_xts.retQuarterly, theme = "white")
+# Volatility
+
+avg_return <- mean(MSFT_xts.retDaily)
+vol <- stdev(MSFT_xts.retDaily)
+
+print(c("Average daily return:", round(avg_return, 4)))
+print(c("Annualized return:", round(avg_return * 252, 3)))
+print(c("Volatility:", round(vol, 3)))
+print(c("Annualized volatility:", round(vol * sqrt(252), 3)))
+
+
+```
+
+
+
+```{r}
+# Testing zero mean return
+t.test(MSFT_xts.retDaily) 
+```
+
+```{r}
+# Calculating central moments
 ```
 
