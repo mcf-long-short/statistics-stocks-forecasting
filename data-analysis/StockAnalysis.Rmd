@@ -314,7 +314,7 @@ the stock price corrected and from H2 of 2020 it continued with the upward trend
 Just by looking at the plot it seems that the MSFT and S&P500 are `higly correlated`,
 but in the following steps we'll perform formal statistical test to see what it
 the level of the linear dependence.
-```{r echo=FALSE`}
+```{r echo=FALSE}
 # Panels
 plot.zoo(cbind(MSFT_xts$MSFT.Close, SNP_xts$GSPC.Close), main = "MSFT and S&P500", xlab = "Date", col="blue")
 ```
