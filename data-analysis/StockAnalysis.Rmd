@@ -9,11 +9,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 ## MSFT stock analysys
 
-In this section we will do analysis of `MSF returns`, perform various statistical
+In this section we will do analysis of `MSF returns` perform various statistical
 tests in order to better understand characteristics of MSFT returns and its 
-distribution during last two and a half years `01/01/2019 - 06/11/2021`.
+distribution during last two and a half years from `01/01/2019` to `06/11/2021`.
 
-```{r}
+```{r echo=FALSE}
 # Importing libraries
 suppressMessages(library(quantmod))
 suppressMessages(library(fBasics))
@@ -25,7 +25,7 @@ suppressMessages(library(np))
 
 In the table we can see with which data we're working on. Data sets used in this
 analysis are obtained with `quantmod` library.
-```{r}
+```{r echo=FALSE}
 # Reading data set
 MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
 
@@ -37,37 +37,45 @@ tail(MSFT[,1:5])
 ### Visualizing the dataset
 
 Let's now plot the stock price for that period. 
-As you can see, only by `visually inspecting plots` to have a better feeling of 
+As you can see, only by `visually inspecting plots`, in order to have a better feeling of 
 the MSFT price movement, without performing any statistical tests, it seems that
 `before H1 of 2020` (when Covid-19 starting to take its toll), there was a clear
-`upwards trend`. An as mentioned, because of the global pandemic there was a
-`sudden drop in price`. Later on we will compare MSFT performance compared to the
-S&P500 and Nasdaq indexes and some of MSFT's competitors in the tech sector.
+`upwards trend`. And as mentioned, because of the global pandemic, there was a
+`sudden drop in price`. Later on, we will compare MSFT performance to the S&P500 
+indexes that we will use as a benchmark.
+
 What is also interesting is that `in the H2 of 2020 and in the H1 of 2021`, 
-we can clearly see again the `upwards trend`, which resulted in `stock price surge`.
+we can again clearly see the `upwards trend`, which resulted in `stock price surge`.
 
 On the second plot, we inspect both the `volume` and the `stock price`. First thing
 that's obvious is that there was a major `sell-off in the H1 of 2020` when Covid
 pandemic stuck. What is also interesting is that is we closely examine the plot
 we will see that occasionally there are huge volumes during some trading sessions
 that moved the price, regardless of the direction.
-```{r}
+```{r echo=FALSE}
 # Converting price series to xts objects
 # (in order to work with quantmod library)
 MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
-
-# Plotting only closing price
-chartSeries(MSFT_xts[,4],theme="white",major.tick="months")
-
-# Plotting prices and volume
-chartSeries(MSFT_xts,theme="white",major.tick="months") 
 ```
+
+```{r echo=FALSE}
+# Plotting only closing price
+chartSeries(MSFT_xts[,4], theme="white", up.col="blue", major.tick="months", name="MSFT - Closing price")
+
+```
+
+```{r echo=FALSE}
+# Plotting prices and volume
+chartSeries(MSFT_xts, theme="white", major.tick="months", name="MSFT - Prices and Volume") 
+```
+
 
 ## MSFT returns
 
 In this section we'll work with MSFT returns, performing various statistical
-tests to figure out and estimate the distribution of returns and thus to have 
-a better idea of stocks risk-reward ratio, potential tail risks and other things.
+tests to figure out and estimate the distribution of returns, thus to have 
+a better idea of stocks risk-reward ratio, potential tail risks and other 
+interesting things.
 
 ### Calculating and visualizing the returns
 
@@ -78,7 +86,7 @@ Let's first calculate the simple returns for MSFT:
 - Monthly returns
 - Quarterly returns
 - Yearly returns
-```{r}
+```{r echo=FALSE}
 # Calculating returns
 
 MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
@@ -91,54 +99,69 @@ MSFT_xts.retYearly <- periodReturn(MSFT_xts, period = "yearly")
 Now let's plot previously calculated returns. There are some interesting things
 we can see on the plots:
 
-- Daily returns - we can notice some volatility clustering meaning that there
+- `Daily returns` - we can notice some volatility clustering, meaning that there
   are periods with high volatility, periods with low volatility and periods with
   moderate volatility. We automatically know that there isn't a constant variance
-  of this returns, so there is some time variation in volatility.
-- Weekly returns - we can see similar behaviour here as well, but it isn't so
-  obvious as for the daily returns. For both returns we can clearly see that
-  the period with the highest volatility was in H1 of the 2020 for obvious reasons.
-  In that period there were both the highest and the lowest daily and weekly 
-  returns for two and a half year period.
-- Quarterly returns - as previously mentioned H1 of 2020 was the most volatile
+  of this returns, there is some time variation in volatility.
+- `Weekly returns` - we can see similar behaviour here as well, but it isn't so
+  obvious as for the daily returns. For both the daily and weekly returns we can 
+  clearly see that the period with the highest volatility was in H1 of the 2020,
+  for obvious reasons. In that period there were both the highest and the lowest
+  daily and weekly returns, for two and a half year period.
+- `Quarterly returns` - as previously mentioned H1 of 2020 was the most volatile
   period and that was the time when the whole market went down and in the transitioning
-  period of Q2-Q3 market started to recover. What is interesting is that Q1 of 
+  period of Q2-Q3, market started to recover. What is interesting is that Q1 of 
   that year had a lowest quarterly return (nearly 0%) and the Q2 of the same year
   had the highest quarterly return (nearly 30%) in the time horizon of two and a 
   half years, which represents our data set.
-- Yearly returns - the most important thing to take it from here is that the 
+- `Yearly returns` - the most important thing to take it from here is that the 
   MSFT stock returns in 2019 (astonishing nearly 60%) outperformed both the returns
   in 2020 (around 40%) and in H1 of 2021 (around 5%). 
-```{r}
-# Plotting returns
+
+
+Plotting returns:
+
+```{r echo=FALSE}
 chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+```
+
+```{r echo=FALSE}
 chartSeries(MSFT_xts.retWeekly, theme = "white", up.col="blue", name = "MSFT - Weekly returns")
+```
+
+```{r echo=FALSE}
 chartSeries(MSFT_xts.retMonthly, theme = "white", up.col="blue", name = "MSFT - Montly returns")
+```
+
+```{r echo=FALSE}
 chartSeries(MSFT_xts.retQuarterly, theme = "white", up.col="blue", name = "MSFT - Quarterly returns")
+```
+
+```{r echo=FALSE}
 chartSeries(MSFT_xts.retYearly, theme = "white", up.col="blue", name = "MSFT Yearly returns")
 ```
 
 ### Analysing daily returns
 
 
-Here we can see some more detailed statistical properties of our data set. Some
-of the interesting thigs we could notice are:
+Here we can see some statistical properties of our data set in more detail. Some
+of the interesting things we could notice are:
 
-- The highest (14.21%) and the lowest (-14.73%) return MSFT had in one day during
-  period od last 615 days.
-- Simple estimation of future daily return as the mean is 0.17%
-- From the first quantile (-0.0072) and the third quantile (0.0111), which is a 
-  magnitude larger, we have an indicator that returns could be positively skewed,
-  more leaning towards positive returns, but we'll statistically calculate that
-  in the one of the next steps.
-```{r}
+- The highest daily return (`14.21%`) and the lowest daily (`-14.73%`) return 
+  MSFT stock had during the period of 615 trading days.
+- Simple estimation of future MSFT daily return, calculated as the mean, is `0.17%`
+- From the first quantile (-0.0072) and the third quantile (0.0111), we have an 
+  indicator that returns are somewhere symmetric, with small potential skewness. 
+  But we'll statistically calculate that in the one of the next steps.
+```{r echo=FALSE}
 # Summary statistics
 basicStats(MSFT_xts.retDaily)
 ```
 
-Let's examine `average` and `annualized` daily return and volatility.
+Let's now calculate `average` and `annualized` daily `return` and `volatility`.
+
 Expected annual return is `42.2%` while expected annual volatility is `32.4%`.
-```{r}
+```{r echo=FALSE}
 # Volatility
 
 avg_return <- mean(MSFT_xts.retDaily)
@@ -152,18 +175,20 @@ print(c("Annualized volatility:", round(vol * sqrt(252), 3)))
 
 ```
 
+#### Zero mean test
 
 We calculated that the expected daily return is `0.18%`. Let's do zero mean test
 (null hypothesis is that returns are zero on average). We got that `p-value` for 
-the test is `0.0335` which is lower than the `significance level of 0.5` for
-rejecting the null hypothesis. Because of the we reject the null hypothesis and
-accept the alternative.
+the test is `0.0335` which is lower than the `significance level of 0.5` (for
+rejecting the null hypothesis). Because of the we reject the null hypothesis and
+accept the alternative, that the returns on average are not zero.
 
 Previously we already calculated average daily return, which is not zero. 
-But because it's not so large number, we got the p-value for the test to be 0.033, 
-which means that if the daily return was smaller than that, it wouldn't be statistically significant and we would probably accept the null hypothesis. In that case we 
-could say with statistical certainty that average daily return is 0.
-```{r}
+But because the return is not so large number, we got the p-value for the test to be equal
+to 0.033, slightly less than 0.5. That means that if the daily return was smaller than 0.18%, 
+it wouldn't be statistically significant and we would probably accept the null hypothesis. 
+In that case we could say with statistical certainty that average daily return is 0.
+```{r echo=FALSE}
 # Testing zero mean return
 t.test(MSFT_xts.retDaily) 
 ```
@@ -172,11 +197,12 @@ t.test(MSFT_xts.retDaily)
 #### Central moments
 
 Third central moment (`skewness`) is `-0.093`. As skewness is negative and small,
-returns are slightly skewed to the left. We'll also perform skewness test.
+returns are slightly skewed to the left. We'll also perform skewness test to make
+sure that it's statistically significant.
 
-Obtained p-value for the test is less than significance level so we reject the null
-hypothesis (H0 is that it's normal distribution, thus skewness is 0).
-```{r}
+Obtained p-value for the test is less than significance level, so we reject the null
+hypothesis (H0 is that it's normal distribution, meaning that skewness is 0).
+```{r echo=FALSE}
 SK = skewness(MSFT_xts.retDaily)  # Skewness
 T = length(MSFT_xts.retDaily)     # Sample size
 t3 = SK/sqrt(6/T)                 # Skewness test
@@ -188,16 +214,16 @@ print(c("P-value:", pval_S))
 
 
 Fourth central moment (`kurtosis`) is `10.13`. In this case we're calculating
-excess kurtosis kurtosis, the reference value is 0, the same as for the skewness.
+`excess kurtosis`, with the reference value is 0, the same as for the skewness.
 As kurtosis is positive and large number, returns distribution is `leptokurtic`.
 That means that distribution has `fatter tails`, indicating potential `tail risk`.
-Returns that are more than three standard deviations is considered to instantiate
+Returns that are more than three standard deviations are considered to instantiate
 tail risk.
 
 Similarly as for the skewness, we'll also perform kurtosis test. 
 Obtained p-value for the test is less than significance level so we reject the null
-hypothesis (H0 is that it's normal distribution, thus that kurtosis is 0).
-```{r}
+hypothesis (H0 is that it's normal distribution, meaning that kurtosis is 0).
+```{r echo=FALSE}
 K = kurtosis(MSFT_xts.retDaily)  # Kurtosis
 t4 = K/sqrt(24/T)                # Kurtosis test
 pval_K = 2*(1-pnorm(abs(t4)))     # Compute p-value
@@ -218,7 +244,7 @@ follows normal distribution. For MSFT returns we got that `p-value` is really sm
 (`2.2e-16`), so we reject the null hypothesis. This test takes both deviation in
 the skewness and in the kurtosis. 
 
-```{r}
+```{r echo=FALSE}
 normalTest(MSFT_xts.retDaily,method='jb')
 ```
 
@@ -229,8 +255,8 @@ Just by looking at the histogram, if we remove outliers, we could say that retur
 follow normal distribution. As skewness is nearly equal to zero, histogram looks
 quite symmetric.
 
-```{r}
-hist(MSFT_xts.retDaily, nclass=35) 
+```{r echo=FALSE}
+hist(MSFT_xts.retDaily, nclass=35)
 ```
 
 In order to better compare distribution of MSFT daily returns to normal distribution
@@ -238,7 +264,7 @@ we will estimate PDF and plot it together with normal distribution.
 
 What we previously calculated from Jarque-Bera normality test, we can clearly
 see that MSFT returns are deviating from normal distribution.
-```{r}
+```{r echo=FALSE}
 # Obtain density estimate
 d1 = density(MSFT_xts.retDaily)
 
@@ -254,6 +280,7 @@ y1 = dnorm(x, mean(MSFT_xts.retDaily), stdev(MSFT_xts.retDaily))
 
 # Add density of normal r.v.
 lines(x, y1, lty=2)
+legend("topright", c("MSFT (full line)", "Normal (dash line)"))
 ```
 
 
@@ -265,7 +292,7 @@ performing various statistical tests.
 Now let's compare the MSFT performance compared to the S&P500 index. Here is the
 S&P500 data:
 
-```{r}
+```{r echo=FALSE}
 # Importing S&P500 data
 SNP <- read.csv(file = "../data/S&p500.csv", row.names = 1, header = TRUE)
 
@@ -279,15 +306,15 @@ tail(SNP[,1:5])
 
 ```
 
-We can plot both the MSFT and S&P500 price movement. If we recall our analysis at 
+We can plot both the MSFT and S&P500 price movement. If you recall our analysis, at 
 the beginning, we notices the upward trend in MSFT stock until Q2 of 2020, where
 the stock price corrected and from H2 of 2020 it continued with the upward trend.
 `The same thing we notice for the S&P500`.
 
-Just by looking at the plot it seems that the MSFT and S&P500 are `correlated`,
+Just by looking at the plot it seems that the MSFT and S&P500 are `higly correlated`,
 but in the following steps we'll perform formal statistical test to see what it
 the level of the linear dependence.
-```{r}
+```{r echo=FALSE`}
 # Panels
 plot.zoo(cbind(MSFT_xts$MSFT.Close, SNP_xts$GSPC.Close), main = "MSFT and S&P500", xlab = "Date", col="blue")
 ```
@@ -295,16 +322,16 @@ plot.zoo(cbind(MSFT_xts$MSFT.Close, SNP_xts$GSPC.Close), main = "MSFT and S&P500
 #### Regression
 
 In order to find out the level of `liner dependence` between MSFT S&P500 return,
-we'll do a regression.
+we'll do a `simple liner regression`.
 
 We can see that on average MSFT (`0.175%`) has a higher daily return compared to
 the S&P500 (`0.099%`).
 
-As we could previously see from just from the plot, that it seemed that there was
-a `high correlation` between them. Now we calculated correlation (standardized
+As we previously seen just from looking at the plot, it seemed that there was
+a `high correlation` between them. Now we calculated `correlation` (standardized
 covariance) which is extremely high with value of `0.85`.
 
-```{r}
+```{r echo=FALSE}
 rt = cbind(MSFT_xts.retDaily, SNP_xts.retDaily)
 
 # Calculating daily returns
@@ -319,21 +346,21 @@ print(c("Returns correlation:", correlation))
 ```
 
 Now let's do the `simple linear regression` of MSFT and S&P500 returns.
-We want to find out if there is a `positive/negative association between MSFT` 
+We want to find out if there is a `positive/negative association between` MSFT
 and S&P500 returns and perform a formal statistical test.
 
-From the regression summary we got the value for the intercept and for the 
+From the regression summary, we got the value for the intercept and for the 
 coefficient. The model fitted returns and the value for the coefficient is 
 `1.144`. T-test is automatically performed to see if the coefficient has a
 statistical significance (null hypothesis is that coefficient is zero).
-For the p-value we got the value `2e-16`s so we could reject the null hypothesis
+For the p-value we got the value of `2e-16`, so we could reject the null hypothesis
 with a high confidence. 
 
-We the `scatter plot` of the returns and the `regression line` once again we
-can clearly see the high level of `positive association` between MSFT and S&P500
-returns.
+On the `scatter plot` of the returns which contains the `regression line`  as well,
+once again we can clearly see the high level of `positive association` between 
+MSFT and S&P500 returns.
 
-```{r}
+```{r echo=FALSE}
 # Fitting the linear regression
 mreg = lm(MSFT_xts.retDaily ~ SNP_xts.retDaily) 
 summary(mreg)
@@ -352,13 +379,13 @@ Smoothing library) to estimate MFST returns `PDF` and `CDF` conditional on the
 S&P500 returns. We want to find out where is the mass of the density and 
 distribution.
 
-A we already knew from previous steps, returns are highly correlated and there
+As we already knew from previous steps, returns are highly correlated and there
 is a positive association between them. That's the reason why the most of the 
 mass of the density is located across diagonal, so if S&P500 return is positive
 there is a high likelihood that MSFT return will be positive as well. And all
 of the peaks are also diagonally distributed.
 
-```{r}
+```{r echo=FALSE, results = FALSE}
 # Estimating conditional PDF
 
 # Find the optimal bandwidths
@@ -374,7 +401,7 @@ plot(fhat, view = "fixed", main = "", xlab='S&P500',ylab='MSFT', theta = 300,phi
 
 Now we estimate and plot conditional CDF. Here we observe all the similar things
 we previously described for the conditional PDF.
-```{r}
+```{r echo=FALSE, results = FALSE}
 # Estimating conditional CDF
 
 # Find the optimal bandwidths
