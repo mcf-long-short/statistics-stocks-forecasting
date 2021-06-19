@@ -1,5 +1,10 @@
+# R project
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# RStudio Knit outputs
+*.html
+*.pdf
 *.html
