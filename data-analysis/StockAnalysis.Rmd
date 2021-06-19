@@ -17,6 +17,7 @@ distribution during last two and a half years `01/01/2019 - 06/11/2021`.
 # Importing libraries
 suppressMessages(library(quantmod))
 suppressMessages(library(fBasics))
+suppressMessages(library(np))
 ```
 
 
@@ -255,3 +256,133 @@ y1 = dnorm(x, mean(MSFT_xts.retDaily), stdev(MSFT_xts.retDaily))
 lines(x, y1, lty=2)
 ```
 
+
+#### Comparing to S&P500
+
+In previous chapters we examined returns on MSFT in the great details and 
+performing various statistical tests.
+
+Now let's compare the MSFT performance compared to the S&P500 index. Here is the
+S&P500 data:
+
+```{r}
+# Importing S&P500 data
+SNP <- read.csv(file = "../data/S&p500.csv", row.names = 1, header = TRUE)
+
+# Converting price series to xts objects
+# (in order to work with quantmod library)
+SNP_xts <- xts(SNP[, 1:5], order.by=as.POSIXct(SNP$date))
+SNP_xts.retDaily <- periodReturn(SNP_xts, period = "daily")
+
+# Printing data
+tail(SNP[,1:5])
+
+```
+
+We can plot both the MSFT and S&P500 price movement. If we recall our analysis at 
+the beginning, we notices the upward trend in MSFT stock until Q2 of 2020, where
+the stock price corrected and from H2 of 2020 it continued with the upward trend.
+`The same thing we notice for the S&P500`.
+
+Just by looking at the plot it seems that the MSFT and S&P500 are `correlated`,
+but in the following steps we'll perform formal statistical test to see what it
+the level of the linear dependence.
+```{r}
+# Panels
+plot.zoo(cbind(MSFT_xts$MSFT.Close, SNP_xts$GSPC.Close), main = "MSFT and S&P500", xlab = "Date", col="blue")
+```
+
+#### Regression
+
+In order to find out the level of `liner dependence` between MSFT S&P500 return,
+we'll do a regression.
+
+We can see that on average MSFT (`0.175%`) has a higher daily return compared to
+the S&P500 (`0.099%`).
+
+As we could previously see from just from the plot, that it seemed that there was
+a `high correlation` between them. Now we calculated correlation (standardized
+covariance) which is extremely high with value of `0.85`.
+
+```{r}
+rt = cbind(MSFT_xts.retDaily, SNP_xts.retDaily)
+
+# Calculating daily returns
+dr = apply(rt, 2, mean)
+print("Average daily returns:")
+print(c("MSFT (%)", round(100 * dr[[1]], 4)))
+print(c("S&P500 (%)", round(100 * dr[[2]], 4)))
+
+# Calculating correlation
+correlation = cor(MSFT_xts.retDaily, SNP_xts.retDaily)
+print(c("Returns correlation:", correlation))
+```
+
+Now let's do the `simple linear regression` of MSFT and S&P500 returns.
+We want to find out if there is a `positive/negative association between MSFT` 
+and S&P500 returns and perform a formal statistical test.
+
+From the regression summary we got the value for the intercept and for the 
+coefficient. The model fitted returns and the value for the coefficient is 
+`1.144`. T-test is automatically performed to see if the coefficient has a
+statistical significance (null hypothesis is that coefficient is zero).
+For the p-value we got the value `2e-16`s so we could reject the null hypothesis
+with a high confidence. 
+
+We the `scatter plot` of the returns and the `regression line` once again we
+can clearly see the high level of `positive association` between MSFT and S&P500
+returns.
+
+```{r}
+# Fitting the linear regression
+mreg = lm(MSFT_xts.retDaily ~ SNP_xts.retDaily) 
+summary(mreg)
+
+# Scatter plot of return and the regression line
+two_returns = cbind(as.numeric(MSFT_xts.retDaily), as.numeric(SNP_xts.retDaily))
+plot(two_returns[,1], two_returns[,2], xlab='MSFT', ylab='S&P500', cex=0.8)
+abline(0.008, 0.807)
+```
+
+
+#### Conditional PDF and CDF estimation
+
+In this section we'll use estimator from `np library` (Nonparametric Kernel 
+Smoothing library) to estimate MFST returns `PDF` and `CDF` conditional on the 
+S&P500 returns. We want to find out where is the mass of the density and 
+distribution.
+
+A we already knew from previous steps, returns are highly correlated and there
+is a positive association between them. That's the reason why the most of the 
+mass of the density is located across diagonal, so if S&P500 return is positive
+there is a high likelihood that MSFT return will be positive as well. And all
+of the peaks are also diagonally distributed.
+
+```{r}
+# Estimating conditional PDF
+
+# Find the optimal bandwidths
+bw <- npcdensbw(xdat=two_returns[,2], ydat=two_returns[,1], tol=.1, ftol=.1)
+
+# Get the model estimate
+fhat <- npcdens(bws=bw) 
+
+# Plotting the density
+plot(fhat, view = "fixed", main = "", xlab='S&P500',ylab='MSFT', theta = 300,phi = 50)
+
+```
+
+Now we estimate and plot conditional CDF. Here we observe all the similar things
+we previously described for the conditional PDF.
+```{r}
+# Estimating conditional CDF
+
+# Find the optimal bandwidths
+bwdist <-npcdistbw(xdat=two_returns[,2], ydat=two_returns[,1], tol=.1, ftol=.1)
+
+# Get the model estimate
+Fhat <- npcdist(bws=bwdist)
+
+# Plotting the density
+plot(Fhat, view = "fixed", main = "", xlab='S&P500',ylab='MSFT', theta = 120, phi = 30)
+```
