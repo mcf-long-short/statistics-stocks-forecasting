@@ -10,11 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Introduction
 
 The goal of this phase is to produce the best `univariate time series model` 
-for forecasting the return on our stock of choice - Microsoft. For that we will
+for forecasting the returns on our stock of choice - Microsoft. For that we will
 use family of ARIMA models to find the best performing model.
 
 In previous chapter we explored statistical properties of MSFT returns. 
-We will use those findings as an intuition in building and evaluation models 
+We will use those findings as an intuition in building and evaluating models 
 and explain every step on the way.
 
 This section will we split in the following phases:
@@ -134,7 +134,7 @@ By looking at the ACF and PACF for 10 lags, we can see that:
 
 It doesn't look like that ACF and PACF are finite. It looks like that they
 are infinite and decaying over time. But it's better to look at the next plots
-where we look back for serial correlation in past 30 trading days (30 lags)
+where we look for serial correlation in 30 trading days (30 lags) back in past.
 
 ```{r echo=FALSE}
 # ACF and PACF - 10 lags
@@ -175,11 +175,11 @@ plot(pacf_plot_250, main = "PACF (250 lags)")
 
 ### ARIMA models - Theoretical propertis
 
-In the previous section we investigated ACF and PACF plot for various lags and
-if each of the we notices two characteristics - that they are `infinite` and
+In the previous section we investigated ACF and PACF plots for various lags and
+in each of them we notices two characteristics - that they are `infinite` and
 `decaying over time`.
 
-In the table bellow you will see theoretical ACF and PACF properties that `AR`
+In the table bellow you will see `theoretical` ACF and PACF properties that `AR`
 (Autoregressive model), `MA` (Moving Average model) and `ARMA` (Autoregressive 
 Moving Average model) model have.
 
@@ -190,10 +190,10 @@ Moving Average model) model have.
 | **ARMA(p, q)** |  Infinite, decaying over time | Infinite, decaying over time |
 
 
-Solely based on the theoretical properties of these models, we expect that
-the ARMA models would outperform the rest. But we'll do proper model fitting 
-and evaluation using various statistical tests to confirm which model is the
-best fit for MSFT daily returns.
+Solely based on the theoretical properties of these models, 
+`we expect that the ARMA models would outperform the rest`. 
+But we'll do proper model fitting and evaluation using various statistical 
+tests to confirm which model is the best fit for MSFT daily returns.
 
 
 
@@ -210,7 +210,7 @@ probability distribution does not change when shifted in time. That means that
 
 The key properties where stationary and non-stationary processes are different:
 
-- In the long-run stationary series fluctuate around its mean with finite
+- In the long-run stationary series fluctuates around its mean with finite
   variance.
 - Random walk tends to deviate in the long run with infinite variance.
 - Random walk with drift tends to drift away from the underlying trend
@@ -221,7 +221,7 @@ The key properties where stationary and non-stationary processes are different:
 ### ETS decomposition
 
 Before we move onto doing proper statistical tests, lets do ETS (Error-Trend-
-Seasonal) decomposition We would like to examine if there is maybe some trend 
+Seasonal) decomposition. We would like to examine if there is maybe some trend 
 in the series and to see if the mean is constant. The reason for that is because
 for for stationarity testing we will have to specify what is our alternative
 hypothesis and what we're testing as the null hypothesis.
@@ -241,7 +241,8 @@ the ACF plot.
 ### ADF test
 
 We can perform statistical tests to check if MSFT returns is `unit root process`
-(`non-stationary` process), meaning if we could model it using ARMA models.
+(`non-stationary` process), meaning if we could model the returns using
+univariate time series models.
 
 Augmented Dickey–Fuller test (ADF) tests the null hypothesis that a unit root is
 present in a time series sample. The alternative hypothesis is different 
@@ -255,8 +256,8 @@ depending on which version of the test is used:
   
 As we previously seen, there is no any upwards/downwards trend in returns, so we
 won't test against trend stationarity (for our alternative hypothesis Ha). 
-As returns are oscillating around zero, we won't test it agains  a non-zero mean 
-stationarity.
+As returns are oscillating around zero, we won't test it against a non-zero mean 
+stationarity as well.
 
 So for our alternative hypothesis we'll chose parameter `None` - `zero-means stationarity` 
 (either an intercept nor a trend is included in the test regression).
@@ -271,7 +272,7 @@ is `-7.3146 ` and the critical values for the `rejection region`:
 
 - `90% confidence level`: `-1.62`
 - `95% confidence level`: `-1.95`
-- `999% confidence level`: `-2.58`
+- `99% confidence level`: `-2.58`
 
 As we're looking at the left tail, our test statistics  is inside the 
 `reject region`, which means we will `reject the Ho`.
@@ -334,7 +335,7 @@ For all of the statistical test we got the the `MSFT returns are stationary`.
 
 In this section, we will selecting the best performing univarite time series 
 model on the in-sample part, our training set. We will first select the best
-model and them we will perform the model evaluation.
+model and then we will perform the model evaluation.
 
 ### Model selection
 
@@ -356,7 +357,8 @@ select the one that has `the lowest score`. They are:
 - `BIC` (Bayesian information criterion) - works on the same principle and idea
   as the AIC. It also tries to identify the model with the best balance in terms
   of overfitting and uderfitting and the number of model parameters. The key 
-  difference compared to the AIC is that `BIC penalizes number of parameters more`.
+  difference compared to the AIC is that 
+  `BIC penalizes number of parameters more strictly`.
 
 
 #### Model grid search
@@ -408,9 +410,9 @@ for (jar in 1:4) {
 ```
 
 
-In the following table you can see AIC and BIC score for AR, MA and ARMA models
+In the following table you can see AIC and BIC scores for AR, MA and ARMA models
 of various orders. At first glance it looks like that all scores are nearly the
-same. So we expect there to bu a subtile differences in finding the best fit 
+same. So we expect there to bu a subtle differences in finding the best fit 
 model.
  
 
@@ -516,8 +518,8 @@ That means that if we use `ARMA(3,3)` instead of `ARMA(2,3)` it would capture
 some more information. But we already knew that from our grid search of the best
 fit model. All of the higher order models had nearly the same, just slightly 
 higher AIC/BIC scores. We also saw that on the AIC score, the best performing
-model was AR(8), so that also explains why increasing AR order by one, in our 
-ARMA(2,3) captures some more information.
+model was AR(9), so that also explains why increasing AR order by one, from our 
+ARMA(2,3) model to ARMA(3,3) model, captures some more information.
 
 Now let's perform the similar analysis of the model that has MA component with
 order greater by one, meaning that now we will test `ARMA(2,4)` for overfitting.
@@ -549,9 +551,9 @@ AIC and BIC score wise.
 Now we move to the `residual analysis`. We want to check if our model captured all
 of the time dependencies and if it exibits the lack of fit.
 
-We will look at the ACF plot of residuals and perform Box-Ljung test as well.
+We will look at the ACF plot of residuals and perform `Box-Ljung test` as well.
 
-Let's plot the `ACF plot of residuals` to see if there are some correlations amont
+Let's plot the `ACF plot of residuals` to see if there are some correlations among
 them which model didn't capture.From the ACF plot of residuals (down bellow) 
 it seems that there might be some significant serial correlation among them, on 
 some of the lags.
@@ -582,8 +584,9 @@ Box.test(arma23[["residuals"]], lag = 30, type =  "Ljung-Box", fitdf = 4)
 ### Model selection with auto.arima
 
 Let's see that `auto.arima` funciton gives us as the best model for the daily MSFT
-return. We limited our grid search to the `maximum order of models to be 12` and
-auto.arima will search across many more combinations of model orders.
+returns. In oprevious step, we limited our grid search to the 
+`maximum order of models to be 12` and auto.arima will search across 
+many more combinations of model orders.
 
 Down bellow you will see that auto.arima found that the `best fit` model is
 `ARMA(2, 2)`, while we found out that the best fit model is `ARMA(2,3)`.
@@ -606,9 +609,10 @@ for couple of other models, that had similar score: `ARMA(2,1)`, `ARMA(2,2)` and
 In this section we will `evaluate the forecast performance` of the models listed
 in the previous chapter. Although we selected the best fit model based on 
 in-the-sample evaluation (`ARMA(2,3)`), we will evaluate couple of competing 
-models. The reason is that all the previous analysis was done on the training set
-and some model which was not performing so great, might be actually performing 
-better than other models on the testing data set.
+models as well. The reason is that all of the previous analysis was done on the 
+training set and some models, which didn't performed so great, might be actually 
+performing better than other models once we evaluate then out-of-the-sample,
+on the testing data set.
 
 The forecast performance is evaluated over the entire `testing data set`. We will
 use `rolling scheme` to produce the forecasts. Models will be evaluated
@@ -624,7 +628,7 @@ MSFE if good for outliers, big errors.
 For `comparing two models` aside from MSFE, we'll use `DM (Diebold-Mariano) test`.
 It checks whether the forecast error is significant or simply due to the specific
 choice of data in our sample. If we have two forecasting sequences (from two
-different models) e.g. `Ej` and `Ei`. The test calculates `loss differential` as
+different models) e.g. `Ej` and `Ei`, the test calculates `loss differential` as
 `dj = Ej^2 + Ei^2` or `dj = |Ej| + |Ei|`, depending if we use MSFE or MAFE to
 calculate forecast errors. Equal model accuracy means that the `expected loss`
 `differential is 0`. That is the null hypothesis, that the models have the same
@@ -728,8 +732,8 @@ But ARMA(2,3) is just a slightly better than other models in terms of forecastin
 error; they all performing nearly the same on the testing sample.
 
 
-Now let's plot the `forecasted values` against the values from test sample and 
-`visualize model comparison`:
+Now let's plot the `forecasted values` against the values from the test sample 
+and `visualize model comparison`:
 
 ```{r echo=FALSE}
 plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - model comparison", xlab="Days ahead", ylab="Returns")
@@ -746,7 +750,7 @@ legend(
 )
 ```
 
-The previous plot look a little crowded with multiple forecasting series. Let's
+The previous plot looks a little bit crowded with multiple forecasting series. Let's
 now plot only forecasted values for `the best performing model - ARMA(2,3)`:
 
 ```{r echo=FALSE}
@@ -796,9 +800,9 @@ dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
 
 ### Multi-period-ahead forecast
 
-In this section we will repeat foreacting and evaluation it on testing data set,
-but in this case we'll do `5-step-ahead-forecast` (one trading week is 5 trading
-sessions).
+In this section we will repeat foreacting and evaluate forecasted values
+on testing data set, but in this case we'll do `5-step-ahead-forecast` 
+(one trading week is 5 trading sessions).
 
 
 ```{r echo=FALSE}
@@ -949,11 +953,11 @@ dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
 We have been doing in-the-sample and out-of-the-sample (forecasting) model
 comparison for the `daily MSFT stock returns`.
 
-For the forecasting evaluation, we tried with rolling scheme with one-period-ahead
-and five-periods-ahead forecasting.
+For the forecasting evaluation, we tried with `rolling scheme` with `one-period-ahead`
+and `five-periods-ahead` forecasting.
 
 The model that proved to be the best fit, in all of the phases, in all the tests
-and for all used metrics was the `ARMA(2,3)`.
+and for all of the used metrics was the `ARMA(2,3)`.
 
 Here is the brief overview of the key metrics for ARMA(2,3):
 
