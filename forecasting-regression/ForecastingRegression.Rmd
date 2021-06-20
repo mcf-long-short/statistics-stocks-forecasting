@@ -169,3 +169,101 @@ The significance level (p-value) for KPSS test is more than 10%, so we are canno
 AAPL_daily_ret_training <- ts(as.numeric(AAPL_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
 AAPL_daily_ret_test <- ts(as.numeric(AAPL_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
 ```
+
+**== NOTE ==**
+
+**We will repeat the same steps for all explanatory variables.**
+
+### Google (GOOG)
+
+#### Stock prices
+
+
+Let's see the graph of Google closing prices for the past two and a half years:
+```{r, echo=FALSE}
+GOOG <- read.csv(file = "../data/GOOG.csv", row.names = 1, header = TRUE)
+GOOG_xts <- xts(GOOG[, 1:5], order.by=as.POSIXct(GOOG$date))
+
+chartSeries(GOOG_xts$GOOG.Close, theme = "white", up.col="blue", name = "GOOG - Closing prices")
+
+# Converting to ts object
+GOOG_prices <- ts(as.numeric(GOOG_xts$GOOG.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(GOOG_prices, lag.max = length(GOOG_prices), main="GOOG Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performin ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(GOOG_prices)
+```
+
+The significance level (p-value) for ADF test is really high (almost 100%), so we cannot reject the null hypothesis.
+
+
+Performin KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(GOOG_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of Google daily returns for the past two and a half years:
+```{r, echo=FALSE}
+GOOG_xts.retDaily <- periodReturn(GOOG_xts, period = "daily")
+chartSeries(GOOG_xts.retDaily, theme = "white", up.col="blue", name = "GOOG - Daily returns")
+
+GOOG_retDaily <-ts(as.numeric(GOOG_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(GOOG_retDaily, lag.max = length(GOOG_retDaily), main="GOOG Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(GOOG_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(GOOG_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+GOOG_daily_ret_training <- ts(as.numeric(GOOG_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+GOOG_daily_ret_test <- ts(as.numeric(GOOG_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
