@@ -601,4 +601,160 @@ for couple of other models, that had similar score: `ARMA(2,1)`, `ARMA(2,2)` and
 `AR(8)`.
 
 
+## Out-of-sample forecast evaluation
+
+In this section we will `evaluate the forecast performance` of the models listed
+in the previous chapter. Although we selected the best fit model based on 
+in-the-sample evaluation (`ARMA(2,3)`), we will evaluate couple of competing 
+models. The reason is that all the previous analysis was done on the training set
+and some model which was not performing so great, might be actually performing 
+better than other models on the testing data set.
+
+The forecast performance is evaluated over the entire `testing data set`. We will
+use `rolling scheme` to produce the forecasts. Models will be evaluated
+in terms of the `one-period-ahead forecast` and forecast at horizon of 
+`five-periods-ahead` (one trading week).
+
+Out testing sample if from `01-01-2020` to `06-10-2021`.
+
+For evaluation model forecast performance, we will use `MSFE` 
+(`Mean Squared Forecast Error`). Compared to the mean absolute forecast error, 
+MSFE if good for outliers, big errors.
+
+### One-period-ahead forecast
+
+```{r echo=FALSE}
+# Forecasting for period 01-01-2020 to 06-10-2021
+# Our forecasting period is 110 days ahead
+H <- 110 
+T <- length(original_set) - H
+
+# MSFE to hold the results
+msfe <- matrix(0L, nrow = 1, ncol = 4)
+```
+
+
+```{r echo=FALSE, results = FALSE, warning=FALSE}
+# Forecasting with ARMA(2,3)
+arma23_forecast <- matrix(0L, nrow = H, ncol=2)
+
+# Rolling scheme
+j <- 0
+for (j in 0:(H-1)) {
+  arma23 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 3))
+  forctemp <- predict(arma23, 1)
+  arma23_forecast[j+1,1] <- forctemp$pred
+}
+
+arma23_forecast[,2] <- original_set[(T+1):(T+H)]
+arma23_forecast_error <- arma23_forecast[,2] - arma23_forecast[,1]
+msfe[,1] <- (t(arma23_forecast_error)%*%arma23_forecast_error) / H
+```
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,2)
+arma22_forecast <- matrix(0L, nrow = H, ncol=2)
+
+# Rolling scheme
+j <- 0
+for (j in 0:(H-1)) {
+  arma22 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 2))
+  forctemp <- predict(arma22, 1)
+  arma22_forecast[j+1,1] <- forctemp$pred
+}
+
+arma22_forecast[,2] <- original_set[(T+1):(T+H)]
+arma22_forecast_error <- arma22_forecast[,2] - arma22_forecast[,1]
+msfe[,2] <- (t(arma22_forecast_error)%*%arma22_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,1)
+arma21_forecast <- matrix(0L, nrow = H, ncol=2)
+
+# Rolling scheme
+j <- 0
+for (j in 0:(H-1)) {
+  arma21 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 1))
+  forctemp <- predict(arma21, 1)
+  arma21_forecast[j+1,1] <- forctemp$pred
+}
+
+arma21_forecast[,2] <- original_set[(T+1):(T+H)]
+arma21_forecast_error <- arma21_forecast[,2] - arma21_forecast[,1]
+msfe[,3] <- (t(arma21_forecast_error)%*%arma21_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with AR(8)
+ar8_forecast <- matrix(0L, nrow = H, ncol=2)
+
+# Rolling scheme
+j <- 0
+for (j in 0:(H-1)) {
+  ar8 <- arima(original_set[(1+j):(T+j)], order = c(8, 0, 0))
+  forctemp <- predict(ar8, 1)
+  ar8_forecast[j+1,1] <- forctemp$pred
+}
+
+ar8_forecast[,2] <- original_set[(T+1):(T+H)]
+ar8_forecast_error <- ar8_forecast[,2] - ar8_forecast[,1]
+msfe[,4] <- (t(ar8_forecast_error)%*%ar8_forecast_error) / H
+```
+
+
+In the following table is the MSFE for the one-step-ahead forecast using different
+competing models:
+```{r echo=FALSE, results = FALSE}
+# Creating one table of MSFE
+colnames(msfe) <- c("ARMA(2,3)", "ARMA(2,2)", "ARMA(2,1)", "AR(8)")
+rownames(msfe) <- c("MSFE")
+```
+
+```{r echo=FALSE}
+
+knitr::kable(msfe)
+```
+
+For the forecasted values, we calculated MFSE for ARMA(2,3), ARMA(2,2), 
+ARMA(2,1) and AR(8) models. We can see that `ARMA(2,3)` has the lower 
+forecasting error! That model was our best pick from the previous step. 
+But ARMA(2,3) is just a slightly better than other models in terms of forecasting
+error; they all performing nearly the same on the testing sample.
+
+
+Now let's plot the `forecasted values` against the values from test sample and 
+`visualize model comparison`:
+
+```{r echo=FALSE}
+plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - model comparison", xlab="Days ahead", ylab="Returns")
+lines(arma23_forecast[,1], type="l", pch=22, lty=2, col="red")
+lines(arma22_forecast[,1], type="l", pch=45, lty=8, col="blue")
+lines(arma21_forecast[,1], type="l", pch=45, lty=8, col="purple")
+lines(ar8_forecast[,1], type="l", pch=45, lty=5, col="green")
+
+par(mar=c(1,2,5,8), xpd=TRUE)
+
+legend( 
+  "topright", inset=c(-0.06, 0), text.col=c("black", "red","blue", "purple", "green"), 
+  legend=c("Test sample","ARMA(2,3)","ARMA(2,2)","ARMA(2,1)","AR(8)")
+)
+```
+
+The previous plot look a little crowded with multiple forecasting series. Let's
+now plot only forecasted values for `the best performing model - ARMA(2,3)`:
+
+```{r echo=FALSE}
+plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - ARMA(2,3)", xlab="Days ahead", ylab="Returns")
+lines(arma23_forecast[,1], type="l", pch=22, lty=2, col="red")
+
+par(mar=c(1,2,5,8), xpd=TRUE)
+
+legend( 
+  "topright", inset=c(-0.06, 0), text.col=c("black", "red"), 
+  legend=c("Test sample","ARMA(2,3)")
+)
+```
 
