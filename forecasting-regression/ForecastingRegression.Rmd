@@ -819,6 +819,10 @@ All other metrics (Adjusted R-squared, RSE, AIC, BIC) are the same (or really cl
 
 This model is the candidate for the winner.
 
+### Regression model with competitors and S&P500 index as explanatory variables
+
+Let's try something similar. Instead of ``Nasdaq``, let's include ``S&P500`` index.
+
 ```{r, echo=FALSE}
 model_competition_sp500 <-  lm(MSFT_daily_ret_training ~
                                 AAPL_daily_ret_training
@@ -833,6 +837,28 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_competition_sp500), digits = 3))))
 ```
 
+From the results above, we can conclude that all coefficients are statistically significant (p-value lower than 5%), except ``IBM`` which is slightly above 5%, but we cannot reject the null hypothesis i.e. we cannot guarantee that this coefficient is not zero.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (81.6%), which means high "goodness of fit". However, it is lower than the candidate for the winner.
+
+
+Residual Standard Error is low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+This model is the good candidate for evaluating the forecast performance which will be described in the next section.
+
+
+### Regression model with Google and Nasdaq index as explanatory variables
+
+In the previous models, we saw that ``3M`` and ``Nasdaq`` show best results for linear regression.
+Let's try ``Google`` and ``Nasdaq``:
 ```{r, echo=FALSE}
 model_google_nasdaq <-      lm(MSFT_daily_ret_training ~
                                   GOOG_daily_ret_training
@@ -844,7 +870,31 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_google_nasdaq), digits = 3))))
 ```
 
+From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%). ``Google`` is slightly under 5%.
 
+
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.1%), which means high "goodness of fit".
+
+
+Residual Standard Error is really low.
+
+
+We can also see that both AIC and BIC are really low (negative).
+
+
+### Regression model with 3M and Nasdaq index as explanatory variables
+
+
+From the previous evaluation models, we have seen that ``3M`` and ``Nasdaq`` gave best results.
+However, they were combined with other explanatory variables.
+
+Let's have a look when we include only these two explanatory variables:
 
 ```{r, echo=FALSE}
 model_3m_nasdaq <-      lm(MSFT_daily_ret_training ~
@@ -856,3 +906,12 @@ cat(paste("AIC: ",toString(round(AIC(model_3m_nasdaq), digits = 3))))
 cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_3m_nasdaq), digits = 3))))
 ```
+
+It was expected. We definitely have a winner! All metrics are show that this model gives the best results.
+
+Both coefficients are statistically significant and have p-value close to 0.
+
+RSE is also really low (0.008).
+
+Both AIC and BIC are lowest among all models.
+
