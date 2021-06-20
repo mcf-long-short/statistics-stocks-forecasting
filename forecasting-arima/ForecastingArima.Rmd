@@ -88,7 +88,6 @@ print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set
 head(training_set, 10)
 ```
 
-
 `Testing set`:
 ```{r echo=FALSE}
 head(testing_set, 10)
@@ -126,7 +125,6 @@ pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
 pacf_plot_250 <- pacf(original_set, lag=250, plot = FALSE)
 ```
 
-
 #### ACF and PACF (10 lags):
 
 By looking at the ACF and PACF for 10 lags, we can see that:
@@ -161,7 +159,6 @@ plot(acf_plot_30, main = "ACF (30 lags)")
 plot(pacf_plot_30, main = "PACF (30 lags)")
 ```
 
-
 #### ACF and PACF (250 lags):
 
 To be completely sure that ACF and PACF are infinite and decaying over time,
@@ -175,7 +172,6 @@ stated for autocorrelation and partial autocorrelation functions.
 plot(acf_plot_250, main = "ACF (250 lags)")
 plot(pacf_plot_250, main = "PACF (250 lags)")
 ```
-
 
 ### ARIMA models - Theoretical propertis
 
@@ -199,7 +195,36 @@ the ARMA models would outperform the rest. But we'll do proper model fitting
 and evaluation using various statistical tests to confirm which model is the
 best fit for MSFT daily returns.
 
+
+
 ## Stationarity testing
+
+In this section we're going to study the stationarity property of the MSFT 
+return. We'll perform proper statistical tests to to check if the returns
+series is non-stationary.
+
+`Stationary process` is a stochastic process whose unconditional joint 
+probability distribution does not change when shifted in time. That means that
+`mean` and `variance` also do not change over time. Example of such process is
+`random walk`, `random walk with a trend` or `white noise`.
+
+The key properties where stationary and non-stationary processes are different:
+
+- In the long-run stationary series fluctuate around its mean with finite
+  variance.
+- Random walk tends to deviate in the long run with infinite variance.
+- Random walk with drift tends to drift away from the underlying trend
+  line.
+- Trend stationary series fluctuates around its trend in the long run.
+
+
+### ETS decomposition
+
+Before we move onto doing proper statistical tests, lets do ETS (Error-Trend-
+Seasonal) decomposition We would like to examine if there is maybe some trend 
+in the series and to see if the mean is constant. The reason for that is because
+for for stationarity testing we will have to specify what is our alternative
+hypothesis and what we're testing as the null hypothesis.
 
 ```{r echo=FALSE}
 # ETS decomposition
@@ -207,20 +232,98 @@ original_set <- ts(as.numeric(MSFT_xts.retDaily), frequency = 252, start=c(2019,
 autoplot(decompose(original_set))
 ```
 
+From the ETS decomposition on the plot above we can see that there is `no trend` 
+in our time series of returns. We can also notice that there is `no seasonal`
+component as well, if there it was, we would be also able to clearly see in in
+the ACF plot.
+
+
+### ADF test
+
+We can perform statistical tests to check if MSFT returns is `unit root process`
+(`non-stationary` process), meaning if we could model it using ARMA models.
+
+Augmented Dickey–Fuller test (ADF) tests the null hypothesis that a unit root is
+present in a time series sample. The alternative hypothesis is different 
+depending on which version of the test is used:
+
+- Ho: `Unit root exists (series is non-stationary)`.
+- Ha: We will have to specify the Ha (alternative hypothesis):
+  - `None` - zero-mean with no trend (no intercept and no trend) ~ `zero-mean stationarity`.
+  - `Drift` - intercept is added ~ `non-zero mean stationarity`.
+  - `Trend` - both the trend with an intercept is added ~ `trend stationarity`.
+  
+As we previously seen, there is no any upwards/downwards trend in returns, so we
+won't test against trend stationarity (for our alternative hypothesis Ha). 
+As returns are oscillating around zero, we won't test it agains  a non-zero mean 
+stationarity.
+
+So for our alternative hypothesis we'll chose parameter `None` - `zero-means stationarity` 
+(either an intercept nor a trend is included in the test regression).
 
 ```{r echo=FALSE}
-adf <- ur.df(original_set, type="none", lags=30, selectlags = "BIC")
+adf <- ur.df(original_set, type="none", lags=10, selectlags = "BIC")
 summary(adf)
 ```
 
+By looking at the results of ADF test we can see that value for our `test-statistics`
+is `-7.3146 ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `-1.62`
+- `95% confidence level`: `-1.95`
+- `999% confidence level`: `-2.58`
+
+As we're looking at the left tail, our test statistics  is inside the 
+`reject region`, which means we will `reject the Ho`.
+That means that MSFT returns have `zero-mean stationary` property.
+
+
+### ERS test
+
+Elliott, Rothenberg and Stock Unit Root Test (ERS) is a modification of ADF test.
+For this null hypothesis is the same - that it's a unit root process.
+
+By looking at the results of ERS test we can see that value for our `test-statistics`
+is `-2.3161 ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `-1.62`
+- `95% confidence level`: `-1.94`
+- `99% confidence level`: `-2.57`
+
+
+As we're looking at the left tail, our test statistics is inside the 
+`reject region` with a confidence of `95%`, which means we will `reject the Ho`.
+That means that MSFT returns is a `stationary` process.
 
 ```{r echo=FALSE}
-ers <- ur.ers(original_set, type = "DF-GLS", model = "constant", lag.max = 12)
+ers <- ur.ers(original_set, type = "DF-GLS", model = "constant", lag.max = 10)
 summary(ers)
 ```
 
+### KPSS test
+
+Kwiatkowski–Phillips–Schmidt–Shin (KPSS)  is another stationarity tests, where
+the null hypothesis that an observable time series is stationary (different 
+copared to the last two tests).
+
+By looking at the results of KPSS test we can see that value for our `test-statistics`
+is `0.0452  ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `0.347`
+- `95% confidence level`: `0.463`
+- `97.2% confidence level`: `0.574`
+- `99% confidence level`: `0.739`
+
+As we're looking at the right tail, our test statistics is `outside`  of the 
+`reject region` for all levels of confidence. So we don't reject the null
+hypothesis, meaning that the returns are exibiting `stationary property`
+
 ```{r echo=FALSE}
-kpss <- ur.kpss(original_set, type = "mu", lags = "short", use.lag = 20)
+kpss <- ur.kpss(original_set, type = "mu", lags = "short", use.lag = 10)
 summary(kpss)
 ```
 
+
+### Stationarity overview
+
+For all of the statistical test we got the the `MSFT returns are stationary`.
