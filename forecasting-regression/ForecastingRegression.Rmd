@@ -951,12 +951,12 @@ df_winner = as.data.frame(cbind(MSFT_daily_ret_original, MMM_retDaily, Nasdaq_re
 
 ```{r, echo=FALSE}
 # Forecasting
-pred.vals.1.winner <- predict.1(model_winner, df_winner, training_dataset_length)
+pred_vals_1_winner <- predict.1(model_winner, df_winner, training_dataset_length)
 ```
 
 ```{r, echo=FALSE}
 # Calling accuracy function from forecast lib
-accuracy(pred.vals.1.winner, as.numeric(MSFT_daily_ret_test))
+accuracy(pred_vals_1_winner, as.numeric(MSFT_daily_ret_test))
 ```
 
 ### Runner up model - Nasdaq and S&P 500
