@@ -327,3 +327,278 @@ summary(kpss)
 ### Stationarity overview
 
 For all of the statistical test we got the the `MSFT returns are stationary`.
+
+
+
+## In-sample modeling (univarite time series models)
+
+In this section, we will selecting the best performing univarite time series 
+model on the in-sample part, our training set. We will first select the best
+model and them we will perform the model evaluation.
+
+### Model selection
+
+In the model selection phase, we want to find the "best" fit model with the 
+lowest number of parameters (order of AR, MA, ARMA models - p, q). We want to:
+
+- Maximize the goodness of fit
+- Minimize the number of model parameters
+
+The are well known scores (`information criterions`) that capture both of those 
+things. Based on the information criterion score, for each of the models, we will
+select the one that has `the lowest score`. They are:
+
+- `AIC` (Akaike information criterion) -  deals with the trade-off between the 
+  goodness of fit of the model and the simplicity of the model. In other words, 
+  AIC deals with both the risk of overfitting and the risk of underfitting.
+  It also includes a penalty that is an increasing function of the number 
+  of estimated parameters.
+- `BIC` (Bayesian information criterion) - works on the same principle and idea
+  as the AIC. It also tries to identify the model with the best balance in terms
+  of overfitting and uderfitting and the number of model parameters. The key 
+  difference compared to the AIC is that `BIC penalizes number of parameters more`.
+
+
+#### Model grid search
+
+As mentioned, we will use AIC and BIC criterion for model selection. We will 
+perform selection on the training data set.
+
+What we want to find the is lowest AIC/BIC scores. For that let's grid search
+for the best models. We will set the maximum number of model orders to be:
+
+- AR(p) - `max(p)=12`
+- MA(q) - `max(q)=12`
+- ARMA(p,q) - `max(p,q)=(4,4)`
+
+```{r echo=FALSE}
+max_p = 12
+max_q = 12
+
+# first column for AR models, second for MA, third for ARMA
+bic=matrix(0L, nrow=max(max_p, max_q), ncol=3) 
+aic=matrix(0L, nrow=max(max_p, max_q), ncol=3)
+
+jar <-1
+for (jar in 1:max_p) {
+  temp <- arima(training_set, order = c(jar,0,0)) 
+  aic[jar,1]<-temp$aic
+  bic[jar,1]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+}
+
+jma <-1
+for (jma in 1:max_q) {
+  temp <- arima(training_set, order = c(0,0,jma)) 
+  aic[jma,2]<-temp$aic
+  bic[jma,2]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+}
+
+
+jar <-1
+jma <-1
+jtick<-0
+for (jar in 1:4) {
+  for (jma in 1:3) {
+  temp <- arima(training_set, order = c(jar,0,jma))
+  jtick<-jtick+1 
+  aic[jtick,3]<-temp$aic
+  bic[jtick,3]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+  }
+}
+```
+
+
+In the following table you can see AIC and BIC score for AR, MA and ARMA models
+of various orders. At first glance it looks like that all scores are nearly the
+same. So we expect there to bu a subtile differences in finding the best fit 
+model.
+ 
+
+```{r echo=FALSE}
+# Creating one table of AIC/BIC scores
+ic <- cbind(aic, bic)
+colnames(ic) <- c("AIC (AR)", "AIC(MA)", "AIC(ARMA)", "BIC (AR)", "BIC(MA)", "BIC(ARMA)")
+rownames(ic) <- c(
+  "1. AR(1), MA(1), ARMA(1,1)",
+  "2. AR(2), MA(2), ARMA(1,2)",
+  "3. AR(3), MA(3), ARMA(1,3)",
+  "4. AR(4), MA(4), ARMA(2,1)",
+  "5. AR(5), MA(5), ARMA(2,2)",
+  "6. AR(6), MA(6), ARMA(2,3)",
+  "7. AR(7), MA(7), ARMA(3,1)",
+  "8. AR(8), MA(8), ARMA(3,2)",
+  "9. AR(9), MA(9), ARMA(3,3)",
+  "10. AR(10), MA(10), ARMA(4,1)",
+  "11. AR(11), MA(11), ARMA(4,2)",
+  "12. AR(12), MA(12), ARMA(4,3)"
+  )
+```
+
+```{r echo=FALSE}
+
+knitr::kable(ic)
+```
+
+
+Let's visualize AIC and BIC score to find out better which model has the lowest
+information criterion. There are several interesting things we can notice from 
+the plots:
+
+- As previously explained, BIC penalizes higher order models more than AIC.
+  We can see that property for AR and MA models of order 6-12. On the AIC score
+  both the AR and MA performed well, especially AR(9), which has the lowest AIC
+  score of all the models. And now if we look at the BIC score for AR/MA of order
+  6-12, we will see that they suddenly are one of the worst models to choose.
+- Another interesting thing is that if you recall the initial analysis of the 
+  ACF and PACF plots (they are both infinite and decaying), we expected ARMA models
+  to perform better than AR and MA, because of the theoretical properties of those
+  models. If we look at the BIC plot we will see that the best fit models are
+  ARMA(2,3), ARMA(2,2) and ARMA(2,1)
+
+```{r echo=FALSE}
+matplot(aic[1:max(max_p, max_q),],type='l', main="AIC score", xlab="Model order", ylab="AIC score")
+legend("bottomleft", inset=0.01, legend=c("AR", "MA", "ARMA"), col=c(1:5),pch=15:19, bg= ("white"), horiz=F)
+matplot(bic[1:max(max_p, max_q),],type='l', main="BIC score", xlab="Model order", ylab="BIC score")
+legend("bottomleft", inset=0.01, legend=c("AR", "MA", "ARMA"), col=c(1:5),pch=15:19, bg= ("white"), horiz=F)
+```
+
+To conclude, we will continue with `ARMA(2,3)` as it has `the lowest BIC` score and
+`one of the lowest AIC score`. As currently we're doing in sample checking, some 
+of the models might perform better on out-of-the-sample evaluation. Couple of other
+models we're going to forecast with are:
+
+- `ARMA(2, 2)`
+- `ARMA(2, 1)`
+- `AR(9)`
+
+
+### Model checking
+
+From the AIC/BIC scores we had to choose the model with the lowest AIC/BIC score. 
+As there are many models that perform well, but the one which is slightly better 
+than others and that is `ARMA(2,3)` model.
+
+In this section we'll do `in-sample model checking`.
+
+Our fitted ARMA(2,3) model:
+```{r echo=FALSE}
+arma23 <- arima(training_set, order = c(2,0,3))
+print(arma23)
+```
+
+#### Overfit checking
+
+Now let's first perform test for overfitting. We will estimate a model of one 
+order of magnitude grater. As we have `ARMA(2,3)`, let's try to fit first 
+`ARMA(3,3)` and `ARMA(2,4)`afterwards. We want to test if adding and additional
+coefficient is statistically significant.
+
+`Fitting ARMA(3,3)`:
+```{r echo=FALSE}
+# Fitting ARMA(3,3)
+arma33 <- arima(testing_set, order = c(3,0,3))
+print(arma33)
+
+# Calculating t-stats
+tstatar <- arma33[["coef"]][["ar3"]]/sqrt(arma33[["var.coef"]][3,3])
+print(c("T statistics:", tstatar))
+ 
+# Calculating p-value
+pval=2*(1-pnorm(abs(tstatar)))# Compute p-value
+print(c("P value:", pval))
+```
+
+We got that the p-value is 1.59e-08, which is lower than the significance level 
+of 0.05. That mean that we will `reject` the null hypothesis 
+(null hypothesis - `coefficient isn't statistically significant`).
+
+That means that if we use `ARMA(3,3)` instead of `ARMA(2,3)` it would capture 
+some more information. But we already knew that from our grid search of the best
+fit model. All of the higher order models had nearly the same, just slightly 
+higher AIC/BIC scores. We also saw that on the AIC score, the best performing
+model was AR(8), so that also explains why increasing AR order by one, in our 
+ARMA(2,3) captures some more information.
+
+Now let's perform the similar analysis of the model that has MA component with
+order greater by one, meaning that now we will test `ARMA(2,4)` for overfitting.
+
+`Fitting ARMA(2,4)`:
+```{r echo=FALSE}
+# Fitting ARMA(2,4)
+arma24 <- arima(testing_set, order = c(2,0,4))
+print(arma24)
+
+# Calculating t-stats
+tstatar <- arma24[["coef"]][["ma4"]]/sqrt(arma24[["var.coef"]][6,6])
+print(c("T statistics:", tstatar))
+ 
+# Calculating p-value
+pval=2*(1-pnorm(abs(tstatar)))# Compute p-value
+print(c("P value:", pval))
+```
+
+We got that the p-value is 0.0199, which is again lower than the significance level 
+of 0.05. That means that we will `reject` the null hypothesis 
+(null hypothesis - `coefficient isn't statistically significant`). Similar thing
+happened here as well, because all of the models we tested, performed similarly
+AIC and BIC score wise.
+
+
+#### Residual checking
+
+Now we move to the `residual analysis`. We want to check if our model captured all
+of the time dependencies and if it exibits the lack of fit.
+
+We will look at the ACF plot of residuals and perform Box-Ljung test as well.
+
+Let's plot the `ACF plot of residuals` to see if there are some correlations amont
+them which model didn't capture.From the ACF plot of residuals (down bellow) 
+it seems that there might be some significant serial correlation among them, on 
+some of the lags.
+
+```{r echo=FALSE}
+acf(arma23[["residuals"]], lag=20)
+```
+
+Just in case let's perform formal statistical test for serial correlation among
+residuals. For that we'll use `Ljung-Box test`.
+
+From the test results down bellow, all p-values for Ljung-Box test less than 0.05,
+so we have to reject the null hypothesis.
+
+The `null hypothesis` for the `Ljung-Box test` is: "There isn't a serial correlation among residuals (the residuals are white noise)".
+  
+That means that the model didn't capture everything from the data. To get the 
+better model fit we would have to use some other model. `From the ones we 
+tested, ARMA(2,3) performed the best`.
+
+```{r echo=FALSE}
+Box.test(arma23[["residuals"]], lag = 10, type =  "Ljung-Box", fitdf = 4)
+Box.test(arma23[["residuals"]], lag = 20, type =  "Ljung-Box", fitdf = 4)
+Box.test(arma23[["residuals"]], lag = 30, type =  "Ljung-Box", fitdf = 4)
+```
+
+
+### Model selection with auto.arima
+
+Let's see that `auto.arima` funciton gives us as the best model for the daily MSFT
+return. We limited our grid search to the `maximum order of models to be 12` and
+auto.arima will search across many more combinations of model orders.
+
+Down bellow you will see that auto.arima found that the `best fit` model is
+`ARMA(2, 2)`, while we found out that the best fit model is `ARMA(2,3)`.
+
+```{r echo=FALSE}
+auto.arima(training_set)
+```
+
+
+### Model selection summary
+
+We evaluated and done many statistical test to find the best fit model. The 
+model which is our top pick is `ARMA(2,3)`. We will also evaluate the forecast
+for couple of other models, that had similar score: `ARMA(2,1)`, `ARMA(2,2)` and
+`AR(8)`.
+
+
+
