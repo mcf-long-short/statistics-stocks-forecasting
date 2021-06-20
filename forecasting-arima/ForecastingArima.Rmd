@@ -1,5 +1,5 @@
 ---
-title: "Forecasting - ARIMA"
+title: "Forecasting - ARIMA models"
 output: html_document
 ---
 
@@ -7,4 +7,965 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Forecasting with ARIMA
+## Introduction
+
+The goal of this phase is to produce the best `univariate time series model` 
+for forecasting the returns on our stock of choice - Microsoft. For that we will
+use family of ARIMA models to find the best performing model.
+
+In previous chapter we explored statistical properties of MSFT returns. 
+We will use those findings as an intuition in building and evaluating models 
+and explain every step on the way.
+
+This section will we split in the following phases:
+
+- `Data preparation`
+- `Stationarity testing`
+- `In-sample modeling`
+- `Out-of-sample forecast evaluation`
+- `Model comparison`
+
+```{r echo=FALSE}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(forecast))
+suppressMessages(library(urca))
+```
+
+
+## Data preparation
+
+Here we're just splitting the sample on the development (“`in-sample`” or 
+“`training`”) and on forecast evaluation (“`out-of-sample`” or “`testing`”) 
+subsamples.
+
+We'll also look at `ACF` (autocorrelation) plot and `PACF` (partial autocorrelation)
+plot in order to check theoretical properties of `AR`, `MA` and `ARMA` models
+against our data set.
+
+### Splitting data set
+
+`MSFT returns`:
+```{r echo=FALSE}
+# Reading data set
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+
+# Converting price series to xts objects
+# (in order to work with quantmod library)
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+
+# Printing MSFT daily returns
+tail(MSFT_xts.retDaily)
+```
+
+```{r echo=FALSE}
+chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+```
+
+Splitting MSFT returns data set into training and testing data set:
+```{r echo=FALSE}
+# Splitting data set to training set and testing set
+train_dataset_range <- '2019::2020'
+test_dataset_range <- '2021::'
+
+# Train and test data sets
+original_set <- ts(as.numeric(MSFT_xts.retDaily))
+training_set <- ts(as.numeric(MSFT_xts.retDaily[train_dataset_range]), frequency = 252, start=c(2019, 1))
+testing_set <- ts(as.numeric(MSFT_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+
+# Data sets size
+size <- length(original_set)
+training_set_size <- length(training_set)
+testing_set_size <- length(testing_set)
+
+print(sprintf("Number of observations in training set: %d (%.2f%%)", training_set_size, 100 * training_set_size / size))
+print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set_size, 100 * testing_set_size / size))
+```
+
+`Training set`:
+```{r echo=FALSE}
+head(training_set, 10)
+```
+
+`Testing set`:
+```{r echo=FALSE}
+head(testing_set, 10)
+```
+
+
+### ACF and PACF
+
+Now let's explore ACF and PACF plots to see if we can conclude something
+from the plots.
+
+As we're using daily data for returns, we will plot the `10 lags` (to see is 
+there is maybe a correlation with lagged term in rage of two weeks - 10 trading
+days).
+
+We'll also check for higher number of lags in order to detect if there is maybe 
+some `short term stock market cycles`. A cycle can last anywhere from a `few weeks` 
+to a `number of years`, depending on the market in question and the time horizon 
+at which you look. A day trader using `five-minute` bars may see four or more 
+complete cycles per day while, for a real estate investor, a cycle may last 
+`18 to 20 years`. Because of that we'll try to plot ACF and PACF with `30 lags`,
+which is looking back in past month and a half.
+
+```{r echo=FALSE}
+# Prepating plots
+
+# ACF plot
+acf_plot_10 <- acf(original_set, lag=10, plot = FALSE)
+acf_plot_30 <- acf(original_set, lag=30, plot = FALSE)
+acf_plot_250 <- acf(original_set, lag=250, plot = FALSE)
+
+# PACF plot
+pacf_plot_10 <- pacf(original_set, lag=10, plot = FALSE)
+pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
+pacf_plot_250 <- pacf(original_set, lag=250, plot = FALSE)
+```
+
+#### ACF and PACF (10 lags):
+
+By looking at the ACF and PACF for 10 lags, we can see that:
+
+- ACF: there are significant serial correlation at lags: 1, 6, 7, 8 and 9.
+- PACF: there are significant serial correlation at lags: 6, 7, 8 and 9.
+
+It doesn't look like that ACF and PACF are finite. It looks like that they
+are infinite and decaying over time. But it's better to look at the next plots
+where we look for serial correlation in 30 trading days (30 lags) back in past.
+
+```{r echo=FALSE}
+# ACF and PACF - 10 lags
+plot(acf_plot_10, main = "ACF (10 lags)")
+plot(pacf_plot_10, main = "PACF (10 lags)")
+```
+
+#### ACF and PACF (30 lags):
+
+By looking at the ACF and PACF for 30 lags, we can see that:
+
+- ACF: there are significant serial correlation at lags: 1, 6, 7, 8, 9, 10, 13,
+  14, 15, 16, 21, 22, 25.
+- PACF: there are significant serial correlation at lags: 6, 7, 8, 9, 22, 26.
+
+Now it definitely looks like that ACF and PACF are infinite and decaying over 
+time.
+
+```{r echo=FALSE}
+# ACF and PACF - 30 lags
+plot(acf_plot_30, main = "ACF (30 lags)")
+plot(pacf_plot_30, main = "PACF (30 lags)")
+```
+
+#### ACF and PACF (250 lags):
+
+To be completely sure that ACF and PACF are infinite and decaying over time,
+lets use even some higher number of lags, e.g. one year period - `250 lags`.
+
+And on the plot bellow, we can clearly see that its true what we previously
+stated for autocorrelation and partial autocorrelation functions.
+
+```{r echo=FALSE}
+# ACF and PACF - 250 lags
+plot(acf_plot_250, main = "ACF (250 lags)")
+plot(pacf_plot_250, main = "PACF (250 lags)")
+```
+
+### ARIMA models - Theoretical propertis
+
+In the previous section we investigated ACF and PACF plots for various lags and
+in each of them we notices two characteristics - that they are `infinite` and
+`decaying over time`.
+
+In the table bellow you will see `theoretical` ACF and PACF properties that `AR`
+(Autoregressive model), `MA` (Moving Average model) and `ARMA` (Autoregressive 
+Moving Average model) model have.
+
+|    Process     |                 ACF           |              PACF            |
+|----------------|:-----------------------------:|-----------------------------:|
+| **AR(p)**      |  Infinite, decaying over time | Finite, 0 for all orders > p |
+| **MA(q)**      |  Finite, 0 for all orders > q | Infinite, decaying over time |
+| **ARMA(p, q)** |  Infinite, decaying over time | Infinite, decaying over time |
+
+
+Solely based on the theoretical properties of these models, 
+`we expect that the ARMA models would outperform the rest`. 
+But we'll do proper model fitting and evaluation using various statistical 
+tests to confirm which model is the best fit for MSFT daily returns.
+
+
+
+## Stationarity testing
+
+In this section we're going to study the stationarity property of the MSFT 
+return. We'll perform proper statistical tests to to check if the returns
+series is non-stationary.
+
+`Stationary process` is a stochastic process whose unconditional joint 
+probability distribution does not change when shifted in time. That means that
+`mean` and `variance` also do not change over time. Example of such process is
+`random walk`, `random walk with a trend` or `white noise`.
+
+The key properties where stationary and non-stationary processes are different:
+
+- In the long-run stationary series fluctuates around its mean with finite
+  variance.
+- Random walk tends to deviate in the long run with infinite variance.
+- Random walk with drift tends to drift away from the underlying trend
+  line.
+- Trend stationary series fluctuates around its trend in the long run.
+
+
+### ETS decomposition
+
+Before we move onto doing proper statistical tests, lets do ETS (Error-Trend-
+Seasonal) decomposition. We would like to examine if there is maybe some trend 
+in the series and to see if the mean is constant. The reason for that is because
+for for stationarity testing we will have to specify what is our alternative
+hypothesis and what we're testing as the null hypothesis.
+
+```{r echo=FALSE}
+# ETS decomposition
+original_set <- ts(as.numeric(MSFT_xts.retDaily), frequency = 252, start=c(2019, 1))
+autoplot(decompose(original_set))
+```
+
+From the ETS decomposition on the plot above we can see that there is `no trend` 
+in our time series of returns. We can also notice that there is `no seasonal`
+component as well, if there it was, we would be also able to clearly see in in
+the ACF plot.
+
+
+### ADF test
+
+We can perform statistical tests to check if MSFT returns is `unit root process`
+(`non-stationary` process), meaning if we could model the returns using
+univariate time series models.
+
+Augmented Dickey–Fuller test (ADF) tests the null hypothesis that a unit root is
+present in a time series sample. The alternative hypothesis is different 
+depending on which version of the test is used:
+
+- Ho: `Unit root exists (series is non-stationary)`.
+- Ha: We will have to specify the Ha (alternative hypothesis):
+  - `None` - zero-mean with no trend (no intercept and no trend) ~ `zero-mean stationarity`.
+  - `Drift` - intercept is added ~ `non-zero mean stationarity`.
+  - `Trend` - both the trend with an intercept is added ~ `trend stationarity`.
+  
+As we previously seen, there is no any upwards/downwards trend in returns, so we
+won't test against trend stationarity (for our alternative hypothesis Ha). 
+As returns are oscillating around zero, we won't test it against a non-zero mean 
+stationarity as well.
+
+So for our alternative hypothesis we'll chose parameter `None` - `zero-means stationarity` 
+(either an intercept nor a trend is included in the test regression).
+
+```{r echo=FALSE}
+adf <- ur.df(original_set, type="none", lags=10, selectlags = "BIC")
+summary(adf)
+```
+
+By looking at the results of ADF test we can see that value for our `test-statistics`
+is `-7.3146 ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `-1.62`
+- `95% confidence level`: `-1.95`
+- `99% confidence level`: `-2.58`
+
+As we're looking at the left tail, our test statistics  is inside the 
+`reject region`, which means we will `reject the Ho`.
+That means that MSFT returns have `zero-mean stationary` property.
+
+
+### ERS test
+
+Elliott, Rothenberg and Stock Unit Root Test (ERS) is a modification of ADF test.
+For this null hypothesis is the same - that it's a unit root process.
+
+By looking at the results of ERS test we can see that value for our `test-statistics`
+is `-2.3161 ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `-1.62`
+- `95% confidence level`: `-1.94`
+- `99% confidence level`: `-2.57`
+
+
+As we're looking at the left tail, our test statistics is inside the 
+`reject region` with a confidence of `95%`, which means we will `reject the Ho`.
+That means that MSFT returns is a `stationary` process.
+
+```{r echo=FALSE}
+ers <- ur.ers(original_set, type = "DF-GLS", model = "constant", lag.max = 10)
+summary(ers)
+```
+
+### KPSS test
+
+Kwiatkowski–Phillips–Schmidt–Shin (KPSS)  is another stationarity tests, where
+the null hypothesis that an observable time series is stationary (different 
+copared to the last two tests).
+
+By looking at the results of KPSS test we can see that value for our `test-statistics`
+is `0.0452  ` and the critical values for the `rejection region`:
+
+- `90% confidence level`: `0.347`
+- `95% confidence level`: `0.463`
+- `97.2% confidence level`: `0.574`
+- `99% confidence level`: `0.739`
+
+As we're looking at the right tail, our test statistics is `outside`  of the 
+`reject region` for all levels of confidence. So we don't reject the null
+hypothesis, meaning that the returns are exibiting `stationary property`
+
+```{r echo=FALSE}
+kpss <- ur.kpss(original_set, type = "mu", lags = "short", use.lag = 10)
+summary(kpss)
+```
+
+
+### Stationarity overview
+
+For all of the statistical test we got the the `MSFT returns are stationary`.
+
+
+
+## In-sample modeling (univarite time series models)
+
+In this section, we will selecting the best performing univarite time series 
+model on the in-sample part, our training set. We will first select the best
+model and then we will perform the model evaluation.
+
+### Model selection
+
+In the model selection phase, we want to find the "best" fit model with the 
+lowest number of parameters (order of AR, MA, ARMA models - p, q). We want to:
+
+- Maximize the goodness of fit
+- Minimize the number of model parameters
+
+The are well known scores (`information criterions`) that capture both of those 
+things. Based on the information criterion score, for each of the models, we will
+select the one that has `the lowest score`. They are:
+
+- `AIC` (Akaike information criterion) -  deals with the trade-off between the 
+  goodness of fit of the model and the simplicity of the model. In other words, 
+  AIC deals with both the risk of overfitting and the risk of underfitting.
+  It also includes a penalty that is an increasing function of the number 
+  of estimated parameters.
+- `BIC` (Bayesian information criterion) - works on the same principle and idea
+  as the AIC. It also tries to identify the model with the best balance in terms
+  of overfitting and uderfitting and the number of model parameters. The key 
+  difference compared to the AIC is that 
+  `BIC penalizes number of parameters more strictly`.
+
+
+#### Model grid search
+
+As mentioned, we will use AIC and BIC criterion for model selection. We will 
+perform selection on the training data set.
+
+What we want to find the is lowest AIC/BIC scores. For that let's grid search
+for the best models. We will set the maximum number of model orders to be:
+
+- AR(p) - `max(p)=12`
+- MA(q) - `max(q)=12`
+- ARMA(p,q) - `max(p,q)=(4,4)`
+
+```{r echo=FALSE}
+max_p = 12
+max_q = 12
+
+# first column for AR models, second for MA, third for ARMA
+bic=matrix(0L, nrow=max(max_p, max_q), ncol=3) 
+aic=matrix(0L, nrow=max(max_p, max_q), ncol=3)
+
+jar <-1
+for (jar in 1:max_p) {
+  temp <- arima(training_set, order = c(jar,0,0)) 
+  aic[jar,1]<-temp$aic
+  bic[jar,1]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+}
+
+jma <-1
+for (jma in 1:max_q) {
+  temp <- arima(training_set, order = c(0,0,jma)) 
+  aic[jma,2]<-temp$aic
+  bic[jma,2]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+}
+
+
+jar <-1
+jma <-1
+jtick<-0
+for (jar in 1:4) {
+  for (jma in 1:3) {
+  temp <- arima(training_set, order = c(jar,0,jma))
+  jtick<-jtick+1 
+  aic[jtick,3]<-temp$aic
+  bic[jtick,3]<-BIC(temp) # there is no in-build BIC result, so we need to call the BIC function
+  }
+}
+```
+
+
+In the following table you can see AIC and BIC scores for AR, MA and ARMA models
+of various orders. At first glance it looks like that all scores are nearly the
+same. So we expect there to bu a subtle differences in finding the best fit 
+model.
+ 
+
+```{r echo=FALSE}
+# Creating one table of AIC/BIC scores
+ic <- cbind(aic, bic)
+colnames(ic) <- c("AIC (AR)", "AIC(MA)", "AIC(ARMA)", "BIC (AR)", "BIC(MA)", "BIC(ARMA)")
+rownames(ic) <- c(
+  "1. AR(1), MA(1), ARMA(1,1)",
+  "2. AR(2), MA(2), ARMA(1,2)",
+  "3. AR(3), MA(3), ARMA(1,3)",
+  "4. AR(4), MA(4), ARMA(2,1)",
+  "5. AR(5), MA(5), ARMA(2,2)",
+  "6. AR(6), MA(6), ARMA(2,3)",
+  "7. AR(7), MA(7), ARMA(3,1)",
+  "8. AR(8), MA(8), ARMA(3,2)",
+  "9. AR(9), MA(9), ARMA(3,3)",
+  "10. AR(10), MA(10), ARMA(4,1)",
+  "11. AR(11), MA(11), ARMA(4,2)",
+  "12. AR(12), MA(12), ARMA(4,3)"
+  )
+```
+
+```{r echo=FALSE}
+
+knitr::kable(ic)
+```
+
+
+Let's visualize AIC and BIC score to find out better which model has the lowest
+information criterion. There are several interesting things we can notice from 
+the plots:
+
+- As previously explained, BIC penalizes higher order models more than AIC.
+  We can see that property for AR and MA models of order 6-12. On the AIC score
+  both the AR and MA performed well, especially AR(9), which has the lowest AIC
+  score of all the models. And now if we look at the BIC score for AR/MA of order
+  6-12, we will see that they suddenly are one of the worst models to choose.
+- Another interesting thing is that if you recall the initial analysis of the 
+  ACF and PACF plots (they are both infinite and decaying), we expected ARMA models
+  to perform better than AR and MA, because of the theoretical properties of those
+  models. If we look at the BIC plot we will see that the best fit models are
+  ARMA(2,3), ARMA(2,2) and ARMA(2,1)
+
+```{r echo=FALSE}
+matplot(aic[1:max(max_p, max_q),],type='l', main="AIC score", xlab="Model order", ylab="AIC score")
+legend("bottomleft", inset=0.01, legend=c("AR", "MA", "ARMA"), col=c(1:5),pch=15:19, bg= ("white"), horiz=F)
+matplot(bic[1:max(max_p, max_q),],type='l', main="BIC score", xlab="Model order", ylab="BIC score")
+legend("bottomleft", inset=0.01, legend=c("AR", "MA", "ARMA"), col=c(1:5),pch=15:19, bg= ("white"), horiz=F)
+```
+
+To conclude, we will continue with `ARMA(2,3)` as it has `the lowest BIC` score and
+`one of the lowest AIC score`. As currently we're doing in sample checking, some 
+of the models might perform better on out-of-the-sample evaluation. Couple of other
+models we're going to forecast with are:
+
+- `ARMA(2, 2)`
+- `ARMA(2, 1)`
+- `AR(9)`
+
+
+### Model checking
+
+From the AIC/BIC scores we had to choose the model with the lowest AIC/BIC score. 
+As there are many models that perform well, but the one which is slightly better 
+than others and that is `ARMA(2,3)` model.
+
+In this section we'll do `in-sample model checking`.
+
+Our fitted ARMA(2,3) model:
+```{r echo=FALSE}
+arma23 <- arima(training_set, order = c(2,0,3))
+print(arma23)
+```
+
+#### Overfit checking
+
+Now let's first perform test for overfitting. We will estimate a model of one 
+order of magnitude grater. As we have `ARMA(2,3)`, let's try to fit first 
+`ARMA(3,3)` and `ARMA(2,4)`afterwards. We want to test if adding and additional
+coefficient is statistically significant.
+
+`Fitting ARMA(3,3)`:
+```{r echo=FALSE}
+# Fitting ARMA(3,3)
+arma33 <- arima(testing_set, order = c(3,0,3))
+print(arma33)
+
+# Calculating t-stats
+tstatar <- arma33[["coef"]][["ar3"]]/sqrt(arma33[["var.coef"]][3,3])
+print(c("T statistics:", tstatar))
+ 
+# Calculating p-value
+pval=2*(1-pnorm(abs(tstatar)))# Compute p-value
+print(c("P value:", pval))
+```
+
+We got that the p-value is 1.59e-08, which is lower than the significance level 
+of 0.05. That mean that we will `reject` the null hypothesis 
+(null hypothesis - `coefficient isn't statistically significant`).
+
+That means that if we use `ARMA(3,3)` instead of `ARMA(2,3)` it would capture 
+some more information. But we already knew that from our grid search of the best
+fit model. All of the higher order models had nearly the same, just slightly 
+higher AIC/BIC scores. We also saw that on the AIC score, the best performing
+model was AR(9), so that also explains why increasing AR order by one, from our 
+ARMA(2,3) model to ARMA(3,3) model, captures some more information.
+
+Now let's perform the similar analysis of the model that has MA component with
+order greater by one, meaning that now we will test `ARMA(2,4)` for overfitting.
+
+`Fitting ARMA(2,4)`:
+```{r echo=FALSE}
+# Fitting ARMA(2,4)
+arma24 <- arima(testing_set, order = c(2,0,4))
+print(arma24)
+
+# Calculating t-stats
+tstatar <- arma24[["coef"]][["ma4"]]/sqrt(arma24[["var.coef"]][6,6])
+print(c("T statistics:", tstatar))
+ 
+# Calculating p-value
+pval=2*(1-pnorm(abs(tstatar)))# Compute p-value
+print(c("P value:", pval))
+```
+
+We got that the p-value is 0.0199, which is again lower than the significance level 
+of 0.05. That means that we will `reject` the null hypothesis 
+(null hypothesis - `coefficient isn't statistically significant`). Similar thing
+happened here as well, because all of the models we tested, performed similarly
+AIC and BIC score wise.
+
+
+#### Residual checking
+
+Now we move to the `residual analysis`. We want to check if our model captured all
+of the time dependencies and if it exibits the lack of fit.
+
+We will look at the ACF plot of residuals and perform `Box-Ljung test` as well.
+
+Let's plot the `ACF plot of residuals` to see if there are some correlations among
+them which model didn't capture.From the ACF plot of residuals (down bellow) 
+it seems that there might be some significant serial correlation among them, on 
+some of the lags.
+
+```{r echo=FALSE}
+acf(arma23[["residuals"]], lag=20, main = "ACF of ARMA(2,3) residuals")
+```
+
+Just in case let's perform formal statistical test for serial correlation among
+residuals. For that we'll use `Ljung-Box test`.
+
+From the test results down bellow, all p-values for Ljung-Box test less than 0.05,
+so we have to reject the null hypothesis.
+
+The `null hypothesis` for the `Ljung-Box test` is: "There isn't a serial correlation among residuals (the residuals are white noise)".
+  
+That means that the model didn't capture everything from the data. To get the 
+better model fit we would have to use some other model. `From the ones we 
+tested, ARMA(2,3) performed the best`.
+
+```{r echo=FALSE}
+Box.test(arma23[["residuals"]], lag = 10, type =  "Ljung-Box", fitdf = 4)
+Box.test(arma23[["residuals"]], lag = 20, type =  "Ljung-Box", fitdf = 4)
+Box.test(arma23[["residuals"]], lag = 30, type =  "Ljung-Box", fitdf = 4)
+```
+
+
+### Model selection with auto.arima
+
+Let's see that `auto.arima` funciton gives us as the best model for the daily MSFT
+returns. In oprevious step, we limited our grid search to the 
+`maximum order of models to be 12` and auto.arima will search across 
+many more combinations of model orders.
+
+Down bellow you will see that auto.arima found that the `best fit` model is
+`ARMA(2, 2)`, while we found out that the best fit model is `ARMA(2,3)`.
+
+```{r echo=FALSE}
+auto.arima(training_set)
+```
+
+
+### Model selection summary
+
+We evaluated and done many statistical test to find the best fit model. The 
+model which is our top pick is `ARMA(2,3)`. We will also evaluate the forecast
+for couple of other models, that had similar score: `ARMA(2,1)`, `ARMA(2,2)` and
+`AR(8)`.
+
+
+## Out-of-sample forecast evaluation
+
+In this section we will `evaluate the forecast performance` of the models listed
+in the previous chapter. Although we selected the best fit model based on 
+in-the-sample evaluation (`ARMA(2,3)`), we will evaluate couple of competing 
+models as well. The reason is that all of the previous analysis was done on the 
+training set and some models, which didn't performed so great, might be actually 
+performing better than other models once we evaluate then out-of-the-sample,
+on the testing data set.
+
+The forecast performance is evaluated over the entire `testing data set`. We will
+use `rolling scheme` to produce the forecasts. Models will be evaluated
+in terms of the `one-period-ahead forecast` and forecast at horizon of 
+`five-periods-ahead` (one trading week).
+
+Out testing sample if from `01-01-2020` to `06-10-2021`.
+
+For `evaluating model forecast performance`, we will use `MSFE` 
+(`Mean Squared Forecast Error`). Compared to the mean absolute forecast error, 
+MSFE if good for outliers, big errors.
+
+For `comparing two models` aside from MSFE, we'll use `DM (Diebold-Mariano) test`.
+It checks whether the forecast error is significant or simply due to the specific
+choice of data in our sample. If we have two forecasting sequences (from two
+different models) e.g. `Ej` and `Ei`, the test calculates `loss differential` as
+`dj = Ej^2 + Ei^2` or `dj = |Ej| + |Ei|`, depending if we use MSFE or MAFE to
+calculate forecast errors. Equal model accuracy means that the `expected loss`
+`differential is 0`. That is the null hypothesis, that the models have the same
+accuracy. We also need to specify the alternative hypothesis:
+
+- "two.sided" (default)
+- "greater" 
+- "less"
+
+
+### One-period-ahead forecast
+
+```{r echo=FALSE}
+# Forecasting for period 01-01-2020 to 06-10-2021
+# Our forecasting period is 110 days ahead
+H <- 110 
+T <- length(original_set) - H
+
+# MSFE to hold the results
+msfe <- matrix(0L, nrow = 1, ncol = 4)
+
+one_period_ahead_forecast <- function(data, H, T, ar=1, i=0, ma=1){
+  
+  # Auxiliary variables
+  j <- 0
+  foroecasted <- matrix(0L, nrow = H, ncol=2)
+  
+  # Rolling scheme
+  for (j in 0:(H-1)) {
+    model <- arima(data[(1+j):(T+j)], order = c(ar, i, ma))
+    forctemp <- predict(model, 1)
+    foroecasted[j+1,1] <- forctemp$pred
+  }
+  
+  return(foroecasted)
+}
+
+```
+
+
+```{r echo=FALSE, results = FALSE, warning=FALSE}
+# Forecasting with ARMA(2,3)
+# Rolling scheme
+arma23_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 3)
+
+arma23_forecast[,2] <- original_set[(T+1):(T+H)]
+arma23_forecast_error <- arma23_forecast[,2] - arma23_forecast[,1]
+msfe[,1] <- (t(arma23_forecast_error)%*%arma23_forecast_error) / H
+```
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,2)
+# Rolling scheme
+arma22_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 2)
+
+arma22_forecast[,2] <- original_set[(T+1):(T+H)]
+arma22_forecast_error <- arma22_forecast[,2] - arma22_forecast[,1]
+msfe[,2] <- (t(arma22_forecast_error)%*%arma22_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,1)
+# Rolling scheme
+arma21_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 1)
+
+arma21_forecast[,2] <- original_set[(T+1):(T+H)]
+arma21_forecast_error <- arma21_forecast[,2] - arma21_forecast[,1]
+msfe[,3] <- (t(arma21_forecast_error)%*%arma21_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with AR(8)
+# Rolling scheme
+ar8_forecast <- one_period_ahead_forecast(original_set, H, T, 8, 0, 0)
+
+ar8_forecast[,2] <- original_set[(T+1):(T+H)]
+ar8_forecast_error <- ar8_forecast[,2] - ar8_forecast[,1]
+msfe[,4] <- (t(ar8_forecast_error)%*%ar8_forecast_error) / H
+```
+
+
+In the following `table` is the `MSFE` for the `one-step-ahead` forecast using different
+competing models:
+```{r echo=FALSE, results = FALSE}
+# Creating one table of MSFE
+colnames(msfe) <- c("ARMA(2,3)", "ARMA(2,2)", "ARMA(2,1)", "AR(8)")
+rownames(msfe) <- c("MSFE")
+```
+
+```{r echo=FALSE}
+
+knitr::kable(msfe)
+```
+
+For the forecasted values, we calculated MFSE for ARMA(2,3), ARMA(2,2), 
+ARMA(2,1) and AR(8) models. We can see that `ARMA(2,3)` has the lower 
+forecasting error! That model was our best pick from the previous step. 
+But ARMA(2,3) is just a slightly better than other models in terms of forecasting
+error; they all performing nearly the same on the testing sample.
+
+
+Now let's plot the `forecasted values` against the values from the test sample 
+and `visualize model comparison`:
+
+```{r echo=FALSE}
+plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - model comparison", xlab="Days ahead", ylab="Returns")
+lines(arma23_forecast[,1], type="l", pch=22, lty=2, col="red")
+lines(arma22_forecast[,1], type="l", pch=45, lty=8, col="blue")
+lines(arma21_forecast[,1], type="l", pch=45, lty=8, col="purple")
+lines(ar8_forecast[,1], type="l", pch=45, lty=5, col="green")
+
+par(mar=c(1,2,5,8), xpd=TRUE)
+
+legend( 
+  "topright", inset=c(-0.06, 0), text.col=c("black", "red","blue", "purple", "green"), 
+  legend=c("Test sample","ARMA(2,3)","ARMA(2,2)","ARMA(2,1)","AR(8)")
+)
+```
+
+The previous plot looks a little bit crowded with multiple forecasting series. Let's
+now plot only forecasted values for `the best performing model - ARMA(2,3)`:
+
+```{r echo=FALSE}
+plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - ARMA(2,3)", xlab="Days ahead", ylab="Returns")
+lines(arma23_forecast[,1], type="l", pch=22, lty=2, col="red")
+
+par(mar=c(1,2,5,8), xpd=TRUE)
+
+legend( 
+  "topright", inset=c(-0.06, 0), text.col=c("black", "red"), 
+  legend=c("Test sample","ARMA(2,3)")
+)
+```
+
+Let's now do model accuracy comparison using `DM tests`. We will be comparing
+`ARMA(2,3)` against:
+
+- ARMA(2,2)
+- ARMA(2,1)
+- AR(8)
+
+`DM test: ARMA(2,3) and ARMA(2,2)`:
+
+P-value (0.2231) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
+```
+
+`DM test: ARMA(2,3) and ARMA(2,1)`:
+
+P-value (0.2383) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
+```
+
+
+`DM test: ARMA(2,3) and AR(8)`:
+
+P-value (0.0154) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
+```
+
+
+### Multi-period-ahead forecast
+
+In this section we will repeat foreacting and evaluate forecasted values
+on testing data set, but in this case we'll do `5-step-ahead-forecast` 
+(one trading week is 5 trading sessions).
+
+
+```{r echo=FALSE}
+# Forecasting for period 01-01-2020 to 06-10-2021
+# Our forecasting period is 110 days ahead
+H <- 110 
+T <- length(original_set) - H
+
+# MSFE to hold the results
+msfe <- matrix(0L, nrow = 1, ncol = 4)
+
+multi_period_ahead_forecast <- function(data, H, T, period, ar=1, i=0, ma=1){
+  
+  # Auxiliary variables
+  j <- 0
+  foroecasted <- matrix(0L, nrow = H, ncol=2)
+  
+  # Rolling scheme
+  while(j < H) {
+    model <- arima(data[(1+j):(T+j)], order = c(ar, i, ma))
+    forctemp <- predict(model, period)
+    
+    # Save forecasted values
+    for (p in 0:(period-1)) {
+     foroecasted[j+1+p, 1] <- forctemp$pred[p+1]
+    }
+    
+    # Move rolling window for number of periods
+    j <- j + period
+  }
+  
+  return(foroecasted)
+}
+
+```
+
+```{r echo=FALSE, results = FALSE, warning=FALSE}
+# Forecasting with ARMA(2,3)
+# Rolling scheme
+arma23_forecast <- multi_period_ahead_forecast(original_set, H, T, 5, 2, 0, 3)
+
+arma23_forecast[,2] <- original_set[(T+1):(T+H)]
+arma23_forecast_error <- arma23_forecast[,2] - arma23_forecast[,1]
+msfe[,1] <- (t(arma23_forecast_error)%*%arma23_forecast_error) / H
+```
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,2)
+# Rolling scheme
+arma22_forecast <- multi_period_ahead_forecast(original_set, H, T, 5, 2, 0, 2)
+
+arma22_forecast[,2] <- original_set[(T+1):(T+H)]
+arma22_forecast_error <- arma22_forecast[,2] - arma22_forecast[,1]
+msfe[,2] <- (t(arma22_forecast_error)%*%arma22_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with ARMA(2,1)
+# Rolling scheme
+arma21_forecast <- multi_period_ahead_forecast(original_set, H, T, 2, 5, 0, 1)
+
+arma21_forecast[,2] <- original_set[(T+1):(T+H)]
+arma21_forecast_error <- arma21_forecast[,2] - arma21_forecast[,1]
+msfe[,3] <- (t(arma21_forecast_error)%*%arma21_forecast_error) / H
+```
+
+
+```{r echo=FALSE, results = FALSE}
+# Forecasting with AR(8)
+# Rolling scheme
+ar8_forecast <- multi_period_ahead_forecast(original_set, H, T, 5, 8, 0, 0)
+
+ar8_forecast[,2] <- original_set[(T+1):(T+H)]
+ar8_forecast_error <- ar8_forecast[,2] - ar8_forecast[,1]
+msfe[,4] <- (t(ar8_forecast_error)%*%ar8_forecast_error) / H
+```
+
+In the following `table` is the `MSFE` for the `five-step-ahead` forecast using different
+competing models:
+```{r echo=FALSE, results = FALSE}
+# Creating one table of MSFE
+colnames(msfe) <- c("ARMA(2,3)", "ARMA(2,2)", "ARMA(2,1)", "AR(8)")
+rownames(msfe) <- c("MSFE")
+```
+
+```{r echo=FALSE}
+
+knitr::kable(msfe)
+```
+
+
+Similar like in one-step-ahead-forecast, the best performing model based on the
+MSFE errors is again model that we picked in previous chapter and for which we
+expected to have the best performance - `ARMA(2,3)`.
+
+
+Now let's just plot the forecasted values using `ARMA(2,3)` and compare it to
+the data from the test sample.
+
+```{r echo=FALSE}
+plot(arma23_forecast[,2], type="l",col="black", main="Forecasting - ARMA(2,3)", xlab="Days ahead", ylab="Returns")
+lines(arma23_forecast[,1], type="l", pch=22, lty=2, col="red")
+
+par(mar=c(1,2,5,8), xpd=TRUE)
+
+legend( 
+  "topright", inset=c(-0.06, 0), text.col=c("black", "red"), 
+  legend=c("Test sample","ARMA(2,3)")
+)
+```
+
+Let's now do model accuracy comparison using `DM tests`. We will be comparing
+`ARMA(2,3)` against:
+
+- ARMA(2,2)
+- ARMA(2,1)
+- AR(8)
+
+`DM test: ARMA(2,3) and ARMA(2,2)`:
+
+P-value (0.2571) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
+```
+
+`DM test: ARMA(2,3) and ARMA(2,1)`:
+
+P-value (0.01766) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
+```
+
+`DM test: ARMA(2,3) and AR(8)`:
+
+P-value (0.00566) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
+```
+
+
+
+## Model comparison overview
+
+We have been doing in-the-sample and out-of-the-sample (forecasting) model
+comparison for the `daily MSFT stock returns`.
+
+For the forecasting evaluation, we tried with `rolling scheme` with `one-period-ahead`
+and `five-periods-ahead` forecasting.
+
+The model that proved to be the best fit, in all of the phases, in all the tests
+and for all of the used metrics was the `ARMA(2,3)`.
+
+Here is the brief overview of the key metrics for ARMA(2,3):
+
+
+|    Metric                 |           ARMA(2,3)           |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -2542.072             | 
+| **BIC**                   |         -2512.500             | 
+| **MSFE (1-period-ahead)** |         0.0002291             |
+| **MSFE (5-period-ahead)** |         0.0002194             |
+
