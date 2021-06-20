@@ -1,6 +1,8 @@
 ---
 title: "Forecasting multivariate time series models (regression models)"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -648,4 +650,101 @@ The significance level (p-value) for KPSS test is more than 10%, so we are canno
 # Splitting the dataset
 Nasdaq_daily_ret_training <- ts(as.numeric(Nasdaq_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
 Nasdaq_daily_ret_test <- ts(as.numeric(Nasdaq_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+## Choosing appropriate regression model
+
+```{r, echo=FALSE}
+model_all <- lm(MSFT_daily_ret_training ~
+                  AAPL_daily_ret_training
+                + GOOG_daily_ret_training
+                + IBM_daily_ret_training
+                + MMM_daily_ret_training
+                + SP500_daily_ret_training
+                + Nasdaq_daily_ret_training)
+summary(model_all)
+
+cat(paste("AIC: ",toString(round(AIC(model_all), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_all), digits = 3))))
+```
+
+
+```{r, echo=FALSE}
+model_indexes <- lm(MSFT_daily_ret_training ~
+                      SP500_daily_ret_training
+                    + Nasdaq_daily_ret_training)
+summary(model_indexes)
+
+cat(paste("AIC: ",toString(round(AIC(model_indexes), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_indexes), digits = 3))))
+```
+
+
+```{r, echo=FALSE}
+model_competition <- lm(MSFT_daily_ret_training ~
+                        AAPL_daily_ret_training
+                      + GOOG_daily_ret_training
+                      + IBM_daily_ret_training
+                      + MMM_daily_ret_training)
+summary(model_competition)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition), digits = 3))))
+```
+
+```{r, echo=FALSE}
+model_competition_nasdaq <- lm(MSFT_daily_ret_training ~
+                                AAPL_daily_ret_training
+                                + GOOG_daily_ret_training
+                                + IBM_daily_ret_training
+                                + MMM_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_competition_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition_nasdaq), digits = 3))))
+```
+
+
+```{r, echo=FALSE}
+model_competition_sp500 <-  lm(MSFT_daily_ret_training ~
+                                AAPL_daily_ret_training
+                                + GOOG_daily_ret_training
+                                + IBM_daily_ret_training
+                                + MMM_daily_ret_training
+                                + SP500_daily_ret_training)
+summary(model_competition_sp500)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition_sp500), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition_sp500), digits = 3))))
+```
+
+```{r, echo=FALSE}
+model_google_nasdaq <-      lm(MSFT_daily_ret_training ~
+                                  GOOG_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_google_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_google_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_google_nasdaq), digits = 3))))
+```
+
+
+
+```{r, echo=FALSE}
+model_3m_nasdaq <-      lm(MSFT_daily_ret_training ~
+                                  MMM_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_3m_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_3m_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_3m_nasdaq), digits = 3))))
 ```
