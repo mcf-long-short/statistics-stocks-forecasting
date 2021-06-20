@@ -73,6 +73,11 @@ We will look at couple of methods for checking stationarity:
 - Kwiatkowski-Phillips-Schmidt-Shin (KPSS) for level or trend stationarity
 
 ### Apple (AAPL)
+
+#### Stock prices
+
+
+Let's see the graph of Apple closing prices for the past two and a half years:
 ```{r, echo=FALSE}
 AAPL <- read.csv(file = "../data/AAPL.csv", row.names = 1, header = TRUE)
 AAPL_xts <- xts(AAPL[, 1:5], order.by=as.POSIXct(AAPL$date))
@@ -83,17 +88,44 @@ chartSeries(AAPL_xts$AAPL.Close, theme = "white", up.col="blue", name = "AAPL - 
 AAPL_prices <- ts(as.numeric(AAPL_xts$AAPL.Close))
 ```
 
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
 ```{r, warning=FALSE, echo=FALSE}
 # ACF
-acf(AAPL_prices, lag.max = length(AAPL_prices))
+acf(AAPL_prices, lag.max = length(AAPL_prices), main="AAPL Closing Price Autocorrelation Function (ACF)")
+```
 
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Another test we can conduct is the Augmented Dickey–Fuller (ADF) t-statistic test to find if the series has a unit root (a series with a trend line will have a unit root and result in a large p-value).
+```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(AAPL_prices)
+```
 
+The significance level (p-value) for ADF test is pretty high (almost 50%), so we cannot reject the null hypothesis.
+
+
+Now, we can test if the time series is level or trend stationary using the Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test. Here we will test the null hypothesis of trend stationarity (a low p-value will indicate a signal that is not trend stationary, has a unit root).
+```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(AAPL_prices, null="Trend")
 ```
 
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+The stock prices time series is definitely not stationary, therefore we need to introduce some kind of modification.
+One of the methods is to use differentiation of stock price i.e. calculate daily returns.
+
+
+Let's see the graph of Apple daily returns for the past two and a half years:
 ```{r, echo=FALSE}
 AAPL_xts.retDaily <- periodReturn(AAPL_xts, period = "daily")
 chartSeries(AAPL_xts.retDaily, theme = "white", up.col="blue", name = "AAPL - Daily returns")
@@ -101,17 +133,37 @@ chartSeries(AAPL_xts.retDaily, theme = "white", up.col="blue", name = "AAPL - Da
 AAPL_retDaily <-ts(as.numeric(AAPL_xts.retDaily))
 ```
 
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
 ```{r, warning=FALSE, echo=FALSE}
 # ACF
-acf(AAPL_retDaily, lag.max = length(AAPL_retDaily))
+acf(AAPL_retDaily, lag.max = length(AAPL_retDaily), main="AAPL Daily return Autocorrelation Function (ACF)")
+```
 
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(AAPL_retDaily)
+```
 
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(AAPL_retDaily, null="Trend")
 
 ```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
 ``` {r, echo=FALSE}
 # Splitting the dataset
 AAPL_daily_ret_training <- ts(as.numeric(AAPL_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
