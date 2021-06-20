@@ -768,30 +768,30 @@ Let's now do model accuracy comparison using `DM tests`. We will be comparing
 - ARMA(2,1)
 - AR(8)
 
-`DM test: ARMA(2,3) and ARMA(2,2)`
+`DM test: ARMA(2,3) and ARMA(2,2)`:
+
+P-value (0.2231) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
 ```
-P-value (0.2231) is less than 0.5 so we reject the null hypothesis and accept the
-specified alrernative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
 
+`DM test: ARMA(2,3) and ARMA(2,1)`:
 
-`DM test: ARMA(2,3) and ARMA(2,1)`
+P-value (0.2383) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
 ```
-P-value (0.2383) is less than 0.5 so we reject the null hypothesis and accept the
-specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
 
 
+`DM test: ARMA(2,3) and AR(8)`:
 
-`DM test: ARMA(2,3) and AR(8)`
+P-value (0.0154) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
 ```
-P-value (0.0154) is less than 0.5 so we reject the null hypothesis and accept the
-specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
-
 
 
 ### Multi-period-ahead forecast
@@ -918,29 +918,29 @@ Let's now do model accuracy comparison using `DM tests`. We will be comparing
 - ARMA(2,1)
 - AR(8)
 
-`DM test: ARMA(2,3) and ARMA(2,2)`
+`DM test: ARMA(2,3) and ARMA(2,2)`:
+
+P-value (0.2571) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
 ```
-P-value (0.2571) is less than 0.5 so we reject the null hypothesis and accept the
-specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
 
+`DM test: ARMA(2,3) and ARMA(2,1)`:
 
-`DM test: ARMA(2,3) and ARMA(2,1)`
+P-value (0.01766) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
 ```
-P-value (0.01766) is less than 0.5 so we reject the null hypothesis and accept the
-specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
 
+`DM test: ARMA(2,3) and AR(8)`:
 
-
-`DM test: ARMA(2,3) and AR(8)`
+P-value (0.00566) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
 ```{r echo=FALSE}
 dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
 ```
-P-value (0.00566) is less than 0.5 so we reject the null hypothesis and accept the
-specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
 
 
 
