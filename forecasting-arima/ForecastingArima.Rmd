@@ -631,20 +631,30 @@ T <- length(original_set) - H
 
 # MSFE to hold the results
 msfe <- matrix(0L, nrow = 1, ncol = 4)
+
+one_period_ahead_forecast <- function(data, H, T, ar=1, i=0, ma=1){
+  
+  # Auxiliary variables
+  j <- 0
+  foroecasted <- matrix(0L, nrow = H, ncol=2)
+  
+  # Rolling scheme
+  for (j in 0:(H-1)) {
+    model <- arima(data[(1+j):(T+j)], order = c(ar, i, ma))
+    forctemp <- predict(model, 1)
+    foroecasted[j+1,1] <- forctemp$pred
+  }
+  
+  return(foroecasted)
+}
+
 ```
 
 
 ```{r echo=FALSE, results = FALSE, warning=FALSE}
 # Forecasting with ARMA(2,3)
-arma23_forecast <- matrix(0L, nrow = H, ncol=2)
-
 # Rolling scheme
-j <- 0
-for (j in 0:(H-1)) {
-  arma23 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 3))
-  forctemp <- predict(arma23, 1)
-  arma23_forecast[j+1,1] <- forctemp$pred
-}
+arma23_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 3)
 
 arma23_forecast[,2] <- original_set[(T+1):(T+H)]
 arma23_forecast_error <- arma23_forecast[,2] - arma23_forecast[,1]
@@ -653,15 +663,8 @@ msfe[,1] <- (t(arma23_forecast_error)%*%arma23_forecast_error) / H
 
 ```{r echo=FALSE, results = FALSE}
 # Forecasting with ARMA(2,2)
-arma22_forecast <- matrix(0L, nrow = H, ncol=2)
-
 # Rolling scheme
-j <- 0
-for (j in 0:(H-1)) {
-  arma22 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 2))
-  forctemp <- predict(arma22, 1)
-  arma22_forecast[j+1,1] <- forctemp$pred
-}
+arma22_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 2)
 
 arma22_forecast[,2] <- original_set[(T+1):(T+H)]
 arma22_forecast_error <- arma22_forecast[,2] - arma22_forecast[,1]
@@ -671,15 +674,8 @@ msfe[,2] <- (t(arma22_forecast_error)%*%arma22_forecast_error) / H
 
 ```{r echo=FALSE, results = FALSE}
 # Forecasting with ARMA(2,1)
-arma21_forecast <- matrix(0L, nrow = H, ncol=2)
-
 # Rolling scheme
-j <- 0
-for (j in 0:(H-1)) {
-  arma21 <- arima(original_set[(1+j):(T+j)], order = c(2, 0, 1))
-  forctemp <- predict(arma21, 1)
-  arma21_forecast[j+1,1] <- forctemp$pred
-}
+arma21_forecast <- one_period_ahead_forecast(original_set, H, T, 2, 0, 1)
 
 arma21_forecast[,2] <- original_set[(T+1):(T+H)]
 arma21_forecast_error <- arma21_forecast[,2] - arma21_forecast[,1]
@@ -689,15 +685,8 @@ msfe[,3] <- (t(arma21_forecast_error)%*%arma21_forecast_error) / H
 
 ```{r echo=FALSE, results = FALSE}
 # Forecasting with AR(8)
-ar8_forecast <- matrix(0L, nrow = H, ncol=2)
-
 # Rolling scheme
-j <- 0
-for (j in 0:(H-1)) {
-  ar8 <- arima(original_set[(1+j):(T+j)], order = c(8, 0, 0))
-  forctemp <- predict(ar8, 1)
-  ar8_forecast[j+1,1] <- forctemp$pred
-}
+ar8_forecast <- one_period_ahead_forecast(original_set, H, T, 8, 0, 0)
 
 ar8_forecast[,2] <- original_set[(T+1):(T+H)]
 ar8_forecast_error <- ar8_forecast[,2] - ar8_forecast[,1]
