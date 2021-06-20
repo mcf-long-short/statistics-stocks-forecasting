@@ -1,6 +1,9 @@
 ---
-title: "Data Analysis"
-output: html_document
+title: "Data Collection"
+output: 
+  html_document:
+    includes:
+      after_body: ../docs/footer.html
 ---
 
 ```{r setup, include=FALSE}
@@ -9,16 +12,42 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Getting data for the forecasting
 
-```{r}
+In this section we're `collecting the data` for the target variable (the variable 
+we want to forecast) and for potentially useful explanatory variables. 
+Since the goal is to forecast, we will have to have least 250 observations 
+at our disposal. Based on the frequency of observation time horizon will be 
+different.
+
+That means we could use daily, weekly, monthly (we'll need at least 21 years) 
+or quarterly data (we'll need at least 63 years).
+
+We settled on using daily data from period of `01-01-2019` to `06-10-2021`, with 
+`616 observations` in total, nearly two and a half years of trading data.
+
+For the analysis, our `target variable` is `Microsoft (MSFT) stock`. Some of the 
+`explanatory variables` (used for regression modeling and forecasting and for
+initial data analysis) are:
+
+- S&P500
+- Nasdaq
+- AAPL
+- GOOG
+- IBM
+
+For data collection process we're using 
+[quantmod library](https://cran.r-project.org/web/packages/quantmod/quantmod.pdf).
+
+```{r echo=FALSE, warning=FALSE}
 # Importing libraries
 suppressMessages(library(quantmod))
 suppressMessages(library(ggplot2))
 suppressMessages(library(dplyr))
+options("getSymbols.warning4.0"=FALSE)
 ```
 
 
 
-```{r}
+```{r echo=FALSE, warning=FALSE}
 # Date period for historical prices
 start_date = "2019-01-01"
 end_date = "2021-06-11"
@@ -26,7 +55,7 @@ end_date = "2021-06-11"
 
 
 
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data <- function(ticker_, from_, to_, output_path_){
   
   # Getting ticker data for selected date range 
@@ -56,33 +85,33 @@ get_and_process_ticker_data <- function(ticker_, from_, to_, output_path_){
 
 
 ### Microsoft data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("MSFT", start_date, end_date, "../data/MSFT.csv")
 ```
 
 ### S&P500 data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("^GSPC", start_date, end_date, "../data/S&P500.csv")
 ```
 
 
 ### Nasdaq data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("^IXIC", start_date, end_date, "../data/Nasdaq.csv")
 ```
 
 ### Apple data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("AAPL", start_date, end_date, "../data/AAPL.csv")
 ```
 
 ### Google data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("GOOG", start_date, end_date, "../data/GOOG.csv")
 ```
 
 ### IBM data
-```{r}
+```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("IBM", start_date, end_date, "../data/IBM.csv")
 ```
 
