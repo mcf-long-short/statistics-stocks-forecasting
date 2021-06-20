@@ -557,7 +557,7 @@ it seems that there might be some significant serial correlation among them, on
 some of the lags.
 
 ```{r echo=FALSE}
-acf(arma23[["residuals"]], lag=20)
+acf(arma23[["residuals"]], lag=20, main = "ACF of ARMA(2,3) residuals")
 ```
 
 Just in case let's perform formal statistical test for serial correlation among
@@ -864,5 +864,24 @@ legend(
 )
 ```
 
+## Model comparison overview
 
+We have been doing in-the-sample and out-of-the-sample (forecasting) model
+comparison for the `daily MSFT stock returns`.
+
+For the forecasting evaluation, we tried with rolling scheme with one-period-ahead
+and five-periods-ahead forecasting.
+
+The model that proved to be the best fit, in all of the phases, in all the tests
+and for all used metrics was the `ARMA(2,3)`.
+
+Here is the brief overview of the key metrics for ARMA(2,3):
+
+
+|    Metric                 |           ARMA(2,3)           |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -2542.072             | 
+| **BIC**                   |         -2512.500             | 
+| **MSFE (1-period-ahead)** |         0.0002291             |
+| **MSFE (5-period-ahead)** |         0.0002194             |
 
