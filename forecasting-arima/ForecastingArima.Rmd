@@ -1,5 +1,5 @@
 ---
-title: "Forecasting - ARIMA"
+title: "Forecasting - ARIMA models"
 output: html_document
 ---
 
@@ -7,15 +7,45 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Forecasting univariate time series models (ARIMA models)
+## Introduction
+
+The goal of this phase is to produce the best `univariate time series model` 
+for forecasting the return on our stock of choice - Microsoft. For that we will
+use family of ARIMA models to find the best performing model.
+
+In previous chapter we explored statistical properties of MSFT returns. 
+We will use those findings as an intuition in building and evaluation models 
+and explain every step on the way.
+
+This section will we split in the following phases:
+
+- `Data preparation`
+- `Stationarity testing`
+- `In-sample modeling`
+- `Out-of-sample forecast evaluation`
+- `Model comparison`
 
 ```{r echo=FALSE}
 # Importing libraries
 suppressMessages(library(quantmod))
 suppressMessages(library(forecast))
+suppressMessages(library(urca))
 ```
 
 
+## Data preparation
+
+Here we're just splitting the sample on the development (“`in-sample`” or 
+“`training`”) and on forecast evaluation (“`out-of-sample`” or “`testing`”) 
+subsamples.
+
+We'll also look at `ACF` (autocorrelation) plot and `PACF` (partial autocorrelation)
+plot in order to check theoretical properties of `AR`, `MA` and `ARMA` models
+against our data set.
+
+### Splitting data set
+
+`MSFT returns`:
 ```{r echo=FALSE}
 # Reading data set
 MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
@@ -29,7 +59,11 @@ MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
 tail(MSFT_xts.retDaily)
 ```
 
+```{r echo=FALSE}
+chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+```
 
+Splitting MSFT returns data set into training and testing data set:
 ```{r echo=FALSE}
 # Splitting data set to training set and testing set
 train_dataset_range <- '2019::2020'
@@ -49,23 +83,123 @@ print(sprintf("Number of observations in training set: %d (%.2f%%)", training_se
 print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set_size, 100 * testing_set_size / size))
 ```
 
+`Training set`:
 ```{r echo=FALSE}
-chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+head(training_set, 10)
 ```
 
+
+`Testing set`:
 ```{r echo=FALSE}
+head(testing_set, 10)
+```
+
+
+### ACF and PACF
+
+Now let's explore ACF and PACF plots to see if we can conclude something
+from the plots.
+
+As we're using daily data for returns, we will plot the `10 lags` (to see is 
+there is maybe a correlation with lagged term in rage of two weeks - 10 trading
+days).
+
+We'll also check for higher number of lags in order to detect if there is maybe 
+some `short term stock market cycles`. A cycle can last anywhere from a `few weeks` 
+to a `number of years`, depending on the market in question and the time horizon 
+at which you look. A day trader using `five-minute` bars may see four or more 
+complete cycles per day while, for a real estate investor, a cycle may last 
+`18 to 20 years`. Because of that we'll try to plot ACF and PACF with `30 lags`,
+which is looking back in past month and a half.
+
+```{r echo=FALSE}
+# Prepating plots
+
 # ACF plot
 acf_plot_10 <- acf(original_set, lag=10, plot = FALSE)
 acf_plot_30 <- acf(original_set, lag=30, plot = FALSE)
-plot(acf_plot_10, main = "ACF (10 lags)")
-plot(acf_plot_30, main = "ACF (30 lags)")
+acf_plot_250 <- acf(original_set, lag=250, plot = FALSE)
 
 # PACF plot
 pacf_plot_10 <- pacf(original_set, lag=10, plot = FALSE)
 pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
+pacf_plot_250 <- pacf(original_set, lag=250, plot = FALSE)
+```
+
+
+#### ACF and PACF (10 lags):
+
+By looking at the ACF and PACF for 10 lags, we can see that:
+
+- ACF: there are significant serial correlation at lags: 1, 6, 7, 8 and 9.
+- PACF: there are significant serial correlation at lags: 6, 7, 8 and 9.
+
+It doesn't look like that ACF and PACF are finite. It looks like that they
+are infinite and decaying over time. But it's better to look at the next plots
+where we look back for serial correlation in past 30 trading days (30 lags)
+
+```{r echo=FALSE}
+# ACF and PACF - 10 lags
+plot(acf_plot_10, main = "ACF (10 lags)")
 plot(pacf_plot_10, main = "PACF (10 lags)")
+```
+
+#### ACF and PACF (30 lags):
+
+By looking at the ACF and PACF for 30 lags, we can see that:
+
+- ACF: there are significant serial correlation at lags: 1, 6, 7, 8, 9, 10, 13,
+  14, 15, 16, 21, 22, 25.
+- PACF: there are significant serial correlation at lags: 6, 7, 8, 9, 22, 26.
+
+Now it definitely looks like that ACF and PACF are infinite and decaying over 
+time.
+
+```{r echo=FALSE}
+# ACF and PACF - 30 lags
+plot(acf_plot_30, main = "ACF (30 lags)")
 plot(pacf_plot_30, main = "PACF (30 lags)")
 ```
+
+
+#### ACF and PACF (250 lags):
+
+To be completely sure that ACF and PACF are infinite and decaying over time,
+lets use even some higher number of lags, e.g. one year period - `250 lags`.
+
+And on the plot bellow, we can clearly see that its true what we previously
+stated for autocorrelation and partial autocorrelation functions.
+
+```{r echo=FALSE}
+# ACF and PACF - 250 lags
+plot(acf_plot_250, main = "ACF (250 lags)")
+plot(pacf_plot_250, main = "PACF (250 lags)")
+```
+
+
+### ARIMA models - Theoretical propertis
+
+In the previous section we investigated ACF and PACF plot for various lags and
+if each of the we notices two characteristics - that they are `infinite` and
+`decaying over time`.
+
+In the table bellow you will see theoretical ACF and PACF properties that `AR`
+(Autoregressive model), `MA` (Moving Average model) and `ARMA` (Autoregressive 
+Moving Average model) model have.
+
+|    Process     |                 ACF           |              PACF            |
+|----------------|:-----------------------------:|-----------------------------:|
+| **AR(p)**      |  Infinite, decaying over time | Finite, 0 for all orders > p |
+| **MA(q)**      |  Finite, 0 for all orders > q | Infinite, decaying over time |
+| **ARMA(p, q)** |  Infinite, decaying over time | Infinite, decaying over time |
+
+
+Solely based on the theoretical properties of these models, we expect that
+the ARMA models would outperform the rest. But we'll do proper model fitting 
+and evaluation using various statistical tests to confirm which model is the
+best fit for MSFT daily returns.
+
+## Stationarity testing
 
 ```{r echo=FALSE}
 # ETS decomposition
@@ -74,4 +208,19 @@ autoplot(decompose(original_set))
 ```
 
 
+```{r echo=FALSE}
+adf <- ur.df(original_set, type="none", lags=30, selectlags = "BIC")
+summary(adf)
+```
+
+
+```{r echo=FALSE}
+ers <- ur.ers(original_set, type = "DF-GLS", model = "constant", lag.max = 12)
+summary(ers)
+```
+
+```{r echo=FALSE}
+kpss <- ur.kpss(original_set, type = "mu", lags = "short", use.lag = 20)
+summary(kpss)
+```
 

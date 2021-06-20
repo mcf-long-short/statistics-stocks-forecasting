@@ -80,3 +80,9 @@ get_and_process_ticker_data("AAPL", start_date, end_date, "../data/AAPL.csv")
 ```{r}
 get_and_process_ticker_data("GOOG", start_date, end_date, "../data/GOOG.csv")
 ```
+
+### IBM data
+```{r}
+get_and_process_ticker_data("IBM", start_date, end_date, "../data/IBM.csv")
+```
+
