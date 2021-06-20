@@ -3,11 +3,11 @@ title: "Forecasting - Volatility"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 # Importing libraries
 suppressMessages(library(quantmod))
 suppressMessages(library(fBasics))
@@ -16,12 +16,13 @@ suppressMessages(library(xts))
 suppressMessages(library(fGarch))
 suppressMessages(library(rugarch))
 suppressMessages(library(Metrics))
+suppressMessages(library(forecast))
 ```
 
 ## Forecasting volatility
 
 Read in the data we obtained in Phase 1. We calculate simple returns.
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
 
 MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
@@ -29,14 +30,16 @@ MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
 ```
 Plotting returns:
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
 ```
 
 ### Splitting the data
 
-We split the data on the in-sample (training) set and out-of-sample (testing) set. We split the data the same way as in Phase 2 and 3. 
-```{r}
+We split the data on the in-sample (training) set and out-of-sample (testing) set. 
+
+We split the data the same way as in Phase 2 and 3. 
+```{r echo=FALSE, warning=FALSE}
 train_dataset_range <- '2019::2020'
 test_dataset_range <- '2021::'
 
@@ -56,11 +59,14 @@ print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set
 
 
 Looking at ACF and PACF plots we see that there's serial correlation.
+
 We take a look at regular, squared and absolute values for lag 10 and 30. 
+
 The regular ACF plot for lag 30 indicates that there's serial correlation up to 25th lag, but looking at the squared returns we see we actually need to the 30th lag.
+
 PACF plots show the same.
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 # ACF plot
 acf_plot_10 <- acf(original_set, lag=10, plot = FALSE)
 acf_plot_30 <- acf(original_set, lag=30, plot = FALSE)
@@ -74,7 +80,7 @@ plot(acf_plot_30_squared, main = "ACF (30 lags) squared")
 plot(acf_plot_30_abs, main = "ACF (30 lags) absolute")
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 pacf_plot_10 <- pacf(original_set, lag=10, plot = FALSE)
 pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
 pacf_plot_30_squared <- pacf(original_set^2, lag=30, plot = FALSE)
@@ -87,16 +93,22 @@ plot(pacf_plot_30_abs, main = "PACF (30 lags) absolute")
 ```
 
 We use Box-Ljung test to test serial correlation on the returns.
-Since the p-value is less than 5% we reject the null hypothesis that there is no serial correlation with strong evidence (p-value = 2.2e-16), i.e. there is serial correlation. THis means that we'll need to use ARMA + GARCH model. 
-```{r}
+
+Since the p-value is less than 5% we reject the null hypothesis that there is no serial correlation with strong evidence (p-value = 2.2e-16), i.e. there is serial correlation. 
+
+This means that we'll need to use ARMA + GARCH model. 
+```{r echo=FALSE, warning=FALSE}
 Box.test(training_set, lag=30, type='Ljung')
 ```
 
 We need to check if there's a ARCH effect in the data.
-Since the expected return of MSFT iz nor zero (calculated in Phase 1) we need to adjust for that.
+
+Since the expected return of MSFT is not zero (calculated in Phase 1) we need to adjust for that.
+
 Since p-value is practically zero (2.2e-16), we reject the null hypothesis (that there's no conditional homoscedastcity). 
+
 This means that we have strong evidence to reject this hypothesis, hence, there's ARCH effect. 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 archTest <- function(rtn, m=10){
   # Perform Lagrange Multiplier Test for ARCH effect of a time series
   # rtn: time series
@@ -139,27 +151,38 @@ archTest(at, 30)
 
 Since we found that there's serial correlation we'll use ARMA(1, 1)-GARCH(1, 1) model with Student t-distribution. 
 
-There is weak evidence of correlation in our residuals and there's no dependence in conditional variance.
-The p-value for the LM Arch Test is 0.56 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
+If we look at the Standardized Residuals Tests we see the following: 
+
+  * Since p-values of Ljung-Box tests on standardized residuals is greater than 5%, there is no evidence of correlation in our residuals 
+  
+  * The same is correct for the squared residuals so there's no dependence in conditional variance.
+  
+  *  The p-value for the LM Arch Test is 0.56 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
 ``` {r warning=FALSE, echo=FALSE}
+
+GARCH_1 = garchFit(~arma(1, 1) + garch(1, 1), data = training_set, trace=F, cond.dist = 'std')
+
+summary(GARCH_1)
+
 GARCH_1_spec <- ugarchspec(mean.model = list(armaOrder = c(1, 1)),
                      variance.model = list(model = 'sGARCH', garchOrder = c(1, 1)),
                      distribution = 'std')
 
 GARCH_1 <- ugarchfit(spec = GARCH_1_spec, data= na.omit(training_set))
-
-GARCH_1
 ```
 
 
 #### Fit ARMA(1, 1) - GARCH(2, 1) model with Student t-distribution
 
-Since we found that there's serial correlation we'll use ARMA(1, 1)-GARCH(2, 1) model with Student t-distribution. 
+The last model gave us pretty good results, let's try to increase the order of the model. 
 
-Looking at the Standardised Resituals Tests, we conclude the following:
-  * The Jarque-Bera Test p-value is zero (5.497-08) so we don't have normal distribution.
-  * There no evidence of correlation in our residuals and there's no dependence in conditional variance.
-  * The p-value for the LM Arch Test is 0.72 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
+  * All of our parameters except for alpha 2 are significant.
+
+  * Just like in the previous model, we can see that there's no correlation and no dependence in conditional variance.
+
+  * The p-value for the LM Arch Test is 0.72 (not rejecting the null) which means that there's no additional ARCH effect our model     didn't captured. This value is even greater than in the previous model.
+
+  * This might indicate that this model will be better, but we'll keep track of the AIC values and compare models that way. 
 ``` {r warning=FALSE, echo=FALSE}
 GARCH_Model_student_t = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'std')
 
@@ -170,7 +193,6 @@ GARCH_Model_student_t_spec <- ugarchspec(mean.model = list(armaOrder = c(1, 1)),
                                    distribution = 'std')
 
 GARCH_Model_student_t <- ugarchfit(spec = GARCH_Model_student_t_spec, data= na.omit(training_set))
-
 ```
   
 #### Fit ARMA(1, 1) - GARCH(2, 1) model with skew-Student distribution
@@ -178,13 +200,17 @@ GARCH_Model_student_t <- ugarchfit(spec = GARCH_Model_student_t_spec, data= na.o
 The previous model gave us pretty good results, let's try same order but different distribution. 
 
 Looking at the Standardised Resituals Tests, we conclude the following:
-  * The Jarque-Bera Test p-value is zero (5.032e-08) so we don't have normal distribution.
-  * There no evidence of correlation in our residuals and there's no dependence in conditional variance.
-  * The p-value for the LM Arch Test is 0.68 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
-```{r echo=FALSE, warning=FALSE}
-GARCH_Model_skewed_student_t = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'sstd')
 
-summary(GARCH_Model_skewed_student_t)
+  * The Jarque-Bera Test p-value is zero (5.032e-08) so we don't have normal distribution.
+  
+  * There no evidence of correlation in our residuals and there's no dependence in conditional variance.
+  
+  * The p-value for the LM Arch Test is 0.68 -there's no additional ARCH effect our model didn't captured.
+  
+```{r echo=FALSE, warning=FALSE}
+GARCH_Model_skewed_student_t_1 = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'sstd')
+
+summary(GARCH_Model_skewed_student_t_1)
 
 GARCH_Model_skewed_student_t_spec <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
                                            variance.model = list(model = 'sGARCH', garchOrder = c(2, 1)),
@@ -192,12 +218,24 @@ GARCH_Model_skewed_student_t_spec <- ugarchspec(mean.model = list(armaOrder=c(1,
 
 GARCH_Model_skewed_student_t <- ugarchfit(spec = GARCH_Model_skewed_student_t_spec, data= na.omit(training_set))
 ```
+#### Fit ARMA(1, 1) - GARCH(2, 1) model with generalized error distribution.
 
+``` {r echo=FALSE, warning=FALSE}
 
+GARCH_Model_GeneralizedErrorDist = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'ged')
 
+summary(GARCH_Model_GeneralizedErrorDist)
+
+GARCH_Model_GeneralizedErrorDist <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
+                                               variance.model = list(model = 'sGARCH', garchOrder = c(2, 1)),
+                                               distribution = 'ged')
+
+GARCH_Model_GeneralizedErrorDist <- ugarchfit(spec = GARCH_Model_GeneralizedErrorDist, data= na.omit(training_set))
+```
 
 #### Fit ARMA(1, 1) - EGARCH(2, 1) model with Student t-distribution
 
+The exponential GARCH Model is another form of GARCH model which is able to overcome deficiencies of a standard GARCH model, i.e. to capture asymmetries and it also imposes less assumptions on the parameters of the model. 
 ``` {r echo=FALSE, warning=FALSE}
 EGARCH_Model_spec <- ugarchspec(mean.model = list(armaOrder = c(1, 1)),
                            variance.model = list(model = 'eGARCH', garchOrder = c(2, 1)),
@@ -221,26 +259,13 @@ FGARCH_Model <- ugarchfit(spec = FGARCH_Model, data= na.omit(training_set))
 FGARCH_Model
 ```
 
-#### Fit ARMA(1, 1) - GARCH(2, 1) model with generalized error distribution.
 
-``` {r echo=FALSE, warning=FALSE}
-
-GARCH_Model_GeneralizedErrorDist = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'ged')
-
-summary(GARCH_Model_GeneralizedErrorDist)
-
-GARCH_Model_GeneralizedErrorDist <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
-                                               variance.model = list(model = 'sGARCH', garchOrder = c(2, 1)),
-                                               distribution = 'ged')
-
-GARCH_Model_GeneralizedErrorDist <- ugarchfit(spec = GARCH_Model_GeneralizedErrorDist, data= na.omit(training_set))
-
-# GARCH_Model_GeneralizedErrorDist
-```
 
 
 #### Fit ARMA(1, 1) - IGARCH(2, 1) model with Student t-distribution.
 
+Integrated GARCH Model is a restricted version of the GARCH model, where the persistent parameters sum up to one.
+$$ \sum^p_{i=1} ~\beta_{i} +\sum_{i=1}^q~\alpha_{i} = 1 $$
 ``` {r echo=FALSE, warning=FALSE}
 IGARCH_Model_spec <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
                            variance.model = list(model = 'iGARCH', garchOrder = c(2, 1)),
@@ -269,6 +294,13 @@ AIC = c(-5.4527, -5.451191, -5.457355, -5.4386, -5.4493 , -5.450541, -5.4535)
 
 ### Evaluate selected model
 
+By examining the statistics and QQ plot of our chosen model, we see that even though we used the model with skew-student distribution, we still don't have normal distribution the skewnees is still not zero.
+``` {r echo=FALSE, warning=FALSE}
+attilda <- residuals(GARCH_Model_skewed_student_t_1, standardize = T)
+basicStats(attilda)
+# plot(GARCH_Model_skewed_student_t_1, which=13)
+```
+
 We first do a forecast using the selected model, we use rolling forecast method and predict entire out-of-sample set.
 ``` {r echo=FALSE, warning=FALSE}
 fitted_model <- ugarchfit(GARCH_Model_skewed_student_t_spec, 
@@ -284,10 +316,10 @@ plot(forecast, which=4)
 
 Now let's take a look at the metrics of our model on out-of-sample data. 
 ``` {r echo=FALSE, warning=FALSE}
-predictions <- forecast@forecast$sigmaFor
+predictions_selected <- forecast@forecast$sigmaFor
 target_values <- forecast@forecast$seriesFor
 
-selected_model_rmse <- rmse(predictions, target_values)
+selected_model_rmse <- rmse(predictions_selected, target_values)
 
 print(sprintf("RMSE of selected model: ARMA(1, 1)-GARCH(2, 1) with skew student distribution  %f", selected_model_rmse))
 ```
@@ -306,13 +338,19 @@ egarch_forecast <- ugarchforecast(egarch_fitl,
                             n.ahead = 1, 
                             n.roll = 110)
 
-predictions <- egarch_forecast@forecast$sigmaFor
+predictions_egarch <- egarch_forecast@forecast$sigmaFor
 target_values <- egarch_forecast@forecast$seriesFor
 
-selected_model_rmse <- rmse(predictions, target_values)
+egarch_model_rmse <- rmse(predictions_egarch, target_values)
 
-print(sprintf("RMSE of EGARCH model %f", selected_model_rmse))
+print(sprintf("RMSE of EGARCH model %f", egarch_model_rmse))
+
+plot(egarch_forecast, which=2)
+plot(egarch_forecast, which=4)
+
 ```
+
+
 IGARCH: 
 ``` {r echo=FALSE, warning=FALSE}
 igarch_fitl<- ugarchfit(IGARCH_Model_spec, 
@@ -323,14 +361,27 @@ igarch_forecast <- ugarchforecast(igarch_fitl,
                                   n.ahead = 1, 
                                   n.roll = 110)
 
-predictions <- igarch_forecast@forecast$sigmaFor
+predictions_igarch <- igarch_forecast@forecast$sigmaFor
 target_values <- igarch_forecast@forecast$seriesFor
 
-selected_model_rmse <- rmse(predictions, target_values)
+igrach_model_rmse <- rmse(predictions_igarch, target_values)
 
-print(sprintf("RMSE of IGARCH model %f", selected_model_rmse))
+print(sprintf("RMSE of IGARCH model %f", igrach_model_rmse))
+
+plot(igarch_forecast, which=2)
+plot(igarch_forecast, which=4)
 ```
 
+Root-mean-square error of all three models is pretty similar. 
 
+To further evaluate models, we use the Diebold-Mariano test to determine whether forecasts are significantly different.
 
+Since p-value for both models comparison is zero (2.2e-16 and 1.55e-13) we reject the null hypothesis. 
+
+This tells us that the difference in models performance is not significant. 
+``` {r echo=FALSE, warning=FALSE}
+dm.test(structure(abs(predictions_selected - target_values), class = 'forecast'), structure(abs(predictions_igarch - target_values), class = 'forecast'))
+
+dm.test(structure(abs(predictions_selected - target_values), class = 'forecast'), structure(abs(predictions_egarch - target_values), class = 'forecast'))
+```
 
