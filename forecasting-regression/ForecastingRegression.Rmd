@@ -2,7 +2,6 @@
 title: "Forecasting multivariate time series models (regression models)"
 output:
   html_document: default
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -204,7 +203,7 @@ acf(GOOG_prices, lag.max = length(GOOG_prices), main="GOOG Closing Price Autocor
 From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
 
 
-Performin ADF test:
+Performing ADF test:
 ```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(GOOG_prices)
@@ -213,7 +212,7 @@ adf.test(GOOG_prices)
 The significance level (p-value) for ADF test is really high (around 96%), so we cannot reject the null hypothesis.
 
 
-Performin KPSS test:
+Performing KPSS test:
 ```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(GOOG_prices, null="Trend")
@@ -299,7 +298,7 @@ acf(IBM_prices, lag.max = length(IBM_prices), main="IBM Closing Price Autocorrel
 From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
 
 
-Performin ADF test:
+Performing ADF test:
 ```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(IBM_prices)
@@ -308,7 +307,7 @@ adf.test(IBM_prices)
 The significance level (p-value) for ADF test is really high (around 22%), so we cannot reject the null hypothesis.
 
 
-Performin KPSS test:
+Performing KPSS test:
 ```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(IBM_prices, null="Trend")
@@ -395,7 +394,7 @@ acf(MMM_prices, lag.max = length(MMM_prices), main="MMM Closing Price Autocorrel
 From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
 
 
-Performin ADF test:
+Performing ADF test:
 ```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(MMM_prices)
@@ -404,7 +403,7 @@ adf.test(MMM_prices)
 The significance level (p-value) for ADF test is really high (around 79%), so we cannot reject the null hypothesis.
 
 
-Performin KPSS test:
+Performing KPSS test:
 ```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(MMM_prices, null="Trend")
@@ -490,7 +489,7 @@ acf(SP500_prices, lag.max = length(SP500_prices), main="SP500 Closing Price Auto
 From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
 
 
-Performin ADF test:
+Performing ADF test:
 ```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(SP500_prices)
@@ -499,7 +498,7 @@ adf.test(SP500_prices)
 The significance level (p-value) for ADF test is really high (around 66%), so we cannot reject the null hypothesis.
 
 
-Performin KPSS test:
+Performing KPSS test:
 ```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(SP500_prices, null="Trend")
@@ -586,7 +585,7 @@ acf(Nasdaq_prices, lag.max = length(Nasdaq_prices), main="Nasdaq Closing Price A
 From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
 
 
-Performin ADF test:
+Performing ADF test:
 ```{r, warning=FALSE, echo=FALSE}
 # ADF test - closing price
 adf.test(Nasdaq_prices)
@@ -595,7 +594,7 @@ adf.test(Nasdaq_prices)
 The significance level (p-value) for ADF test is really high (around 57%), so we cannot reject the null hypothesis.
 
 
-Performin KPSS test:
+Performing KPSS test:
 ```{r, warning=FALSE, echo=FALSE}
 # KPSS test - closing price
 kpss.test(Nasdaq_prices, null="Trend")
@@ -665,7 +664,7 @@ The most common evaluation metrics in regression model are:
 
 - **R-squared (R2)**, which is the proportion of variation in the outcome that is explained by the predictor variables. In multiple regression models, R2 corresponds to the squared correlation between the observed outcome values and the predicted values by the model. The Higher the R-squared, the better the model.
 - **Root Mean Squared Error (RMSE)**, which measures the average error performed by the model in predicting the outcome for an observation. Mathematically, the RMSE is the square root of the mean squared error (MSE), which is the average squared difference between the observed actual outome values and the values predicted by the model. The lower the RMSE, the better the model.
-- **Residual Standard Error (RSE)**, also known as the model sigma, is a variant of the RMSE adjusted for the number of predictors in the model. The lower the RSE, the better the model. In practice, the difference between RMSE and RSE is very small, particularly for large multivariate data.
+- **Residual Standard Error (RSE)**, also known as the model sigma, is the average amount that the response will deviate from the true regression line. The lower the RSE, the better the model. In practice, the difference between RMSE and RSE is very small, particularly for large multivariate data.
 
 
 The problem with the above metrics, is that they are sensible to the inclusion of additional variables in the model, even if those variables don't have significant contribution in explaining the outcome. This means that including additional variables in the model will always increase the R2 and reduce the RMSE. Therefore, we need to introduce more robust metric in order to make proper choice.
@@ -680,6 +679,19 @@ Additionally, there are two other important metrics that are commonly used for m
 - **BIC** - This is a variant of AIC with a stronger penalty for including additional variables to the model.
 
 In the next section, we will use **Adjusted R2**, **AIC** and **BIC** for comparing models.
+
+Whole dataset (for each stock/index we picked) is divided into two subsets:
+
+- Training (in-sample)
+- Testing (out-of-sample)
+
+We will choose the appropriate regression model on the in-sample dataset.
+
+### Regression model with all explanatory variables
+
+The first linear model that we will try out is using all explanatory variables that we listed in the introduction section.
+
+Let's see the metrics from evaluated model:
 
 ```{r, echo=FALSE}
 model_all <- lm(MSFT_daily_ret_training ~
@@ -696,6 +708,25 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_all), digits = 3))))
 ```
 
+From the results above, we can see that only two variables are statistically significant (p-value lower than 5%): ``3M`` and ``Nasdaq`` daily returns.
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.8%), which means high "goodness of fit".
+
+
+Residual Standard Error (also considered as measure of the quality of a linear regression fit) is really low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+### Regression model with market stock indexes as explanatory variables
+
+Let's now include only ``S&P500`` and ``Nasdaq`` daily returns.
 
 ```{r, echo=FALSE}
 model_indexes <- lm(MSFT_daily_ret_training ~
@@ -708,6 +739,25 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_indexes), digits = 3))))
 ```
 
+From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%).
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.2%), which means high "goodness of fit".
+
+
+Residual Standard Error is really low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+### Regression model with competitors as explanatory variables
+
+Only competitor companies (daily returns) are now explanatory variables:
 
 ```{r, echo=FALSE}
 model_competition <- lm(MSFT_daily_ret_training ~
@@ -721,6 +771,25 @@ cat(paste("AIC: ",toString(round(AIC(model_competition), digits = 3))))
 cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_competition), digits = 3))))
 ```
+
+Quite interesting results. Now, all coefficients are statistically significant except ``3M`` (p-value is around 9%).
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is lower than in the previous modes (75.3%), which mean it fits little bit worse, but is is still good results though.
+
+
+Residual Standard Error is higher than in the previous models.
+
+
+We can also see that both AIC and BIC are low (negative), but they are higher than in the previous models.
+
+
+### Regression model with competitors and Nasdaq index as explanatory variables
+
+Let's see what happens if we add ``Nasdaq`` index to the previous model as explanatory variable:
 
 ```{r, echo=FALSE}
 model_competition_nasdaq <- lm(MSFT_daily_ret_training ~
@@ -736,6 +805,19 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_competition_nasdaq), digits = 3))))
 ```
 
+Well, this model is similar to the first model (where we included all explanatory variables).
+
+
+We can see that only two variables are statistically significant (p-value lower than 5%): ``3M`` and ``Nasdaq`` daily returns.
+
+
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+All other metrics (Adjusted R-squared, RSE, AIC, BIC) are the same (or really close).
+
+
+This model is the candidate for the winner.
 
 ```{r, echo=FALSE}
 model_competition_sp500 <-  lm(MSFT_daily_ret_training ~
