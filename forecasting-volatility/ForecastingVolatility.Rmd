@@ -242,11 +242,11 @@ GARCH_Model_GeneralizedErrorDist <- ugarchfit(spec = GARCH_Model_GeneralizedErro
 #### Fit ARMA(1, 1) - IGARCH(2, 1) model with Student t-distribution.
 
 ``` {r echo=FALSE, warning=FALSE}
-IGARCH_Model <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
+IGARCH_Model_spec <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
                            variance.model = list(model = 'iGARCH', garchOrder = c(2, 1)),
                            distribution = 'std')
 
-IGARCH_Model <- ugarchfit(spec = IGARCH_Model, data= na.omit(training_set))
+IGARCH_Model <- ugarchfit(spec = IGARCH_Model_spec, data= na.omit(training_set))
 
 IGARCH_Model
 ```
@@ -271,40 +271,64 @@ AIC = c(-5.4527, -5.451191, -5.457355, -5.4386, -5.4493 , -5.450541, -5.4535)
 
 We first do a forecast using the selected model, we use rolling forecast method and predict entire out-of-sample set.
 ``` {r echo=FALSE, warning=FALSE}
-fit_roll <- ugarchfit(GARCH_Model_skewed_student_t_spec, 
-                      data = na.omit(original_set),
-                      out.sample = 110)
+fitted_model <- ugarchfit(GARCH_Model_skewed_student_t_spec, 
+                          data = na.omit(original_set),
+                          out.sample = 110)
 
-forecast <- ugarchforecast(fit_roll, 
+forecast <- ugarchforecast(fitted_model, 
                             n.ahead = 1, 
                             n.roll = 110)
 plot(forecast, which=2)
 plot(forecast, which=4)
 ```
 
-
 Now let's take a look at the metrics of our model on out-of-sample data. 
-The Root-mean-square error is 0.018215. 
 ``` {r echo=FALSE, warning=FALSE}
-predictions <- fore_roll@forecast$sigmaFor
-target_values <- fore_roll@forecast$seriesFor
+predictions <- forecast@forecast$sigmaFor
+target_values <- forecast@forecast$seriesFor
 
 selected_model_rmse <- rmse(predictions, target_values)
 
-print(sprintf("RMSE of selected model %f", selected_model_rmse))
+print(sprintf("RMSE of selected model: ARMA(1, 1)-GARCH(2, 1) with skew student distribution  %f", selected_model_rmse))
 ```
 
 
 
+Now let's do a forecast with two aditional models, EGARCH and IGARCH and compare the results. 
 
-``` {r}
-EGARCH_Model_spec
+EGARCH: 
+``` {r echo=FALSE, warning=FALSE}
+egarch_fitl<- ugarchfit(EGARCH_Model_spec, 
+                        data = na.omit(original_set),
+                        out.sample = 110)
+
+egarch_forecast <- ugarchforecast(egarch_fitl, 
+                            n.ahead = 1, 
+                            n.roll = 110)
+
+predictions <- egarch_forecast@forecast$sigmaFor
+target_values <- egarch_forecast@forecast$seriesFor
+
+selected_model_rmse <- rmse(predictions, target_values)
+
+print(sprintf("RMSE of EGARCH model %f", selected_model_rmse))
 ```
+IGARCH: 
+``` {r echo=FALSE, warning=FALSE}
+igarch_fitl<- ugarchfit(IGARCH_Model_spec, 
+                        data = na.omit(original_set),
+                        out.sample = 110)
 
+igarch_forecast <- ugarchforecast(igarch_fitl, 
+                                  n.ahead = 1, 
+                                  n.roll = 110)
 
+predictions <- igarch_forecast@forecast$sigmaFor
+target_values <- igarch_forecast@forecast$seriesFor
 
-``` {r}
+selected_model_rmse <- rmse(predictions, target_values)
 
+print(sprintf("RMSE of IGARCH model %f", selected_model_rmse))
 ```
 
 
