@@ -655,6 +655,32 @@ Nasdaq_daily_ret_test <- ts(as.numeric(Nasdaq_xts.retDaily[test_dataset_range]),
 
 ## Choosing appropriate regression model
 
+Before we choose appropriate regression model, let's first say couple of words about linear regression itself and the metrics that will be used.
+
+
+A linear regression is a statistical model that analyzes the relationship between a response/dependent variable and one or more variables and their interactions (explanatory/independent variables).
+
+
+The most common evaluation metrics in regression model are:
+
+- **R-squared (R2)**, which is the proportion of variation in the outcome that is explained by the predictor variables. In multiple regression models, R2 corresponds to the squared correlation between the observed outcome values and the predicted values by the model. The Higher the R-squared, the better the model.
+- **Root Mean Squared Error (RMSE)**, which measures the average error performed by the model in predicting the outcome for an observation. Mathematically, the RMSE is the square root of the mean squared error (MSE), which is the average squared difference between the observed actual outome values and the values predicted by the model. The lower the RMSE, the better the model.
+- **Residual Standard Error (RSE)**, also known as the model sigma, is a variant of the RMSE adjusted for the number of predictors in the model. The lower the RSE, the better the model. In practice, the difference between RMSE and RSE is very small, particularly for large multivariate data.
+
+
+The problem with the above metrics, is that they are sensible to the inclusion of additional variables in the model, even if those variables don't have significant contribution in explaining the outcome. This means that including additional variables in the model will always increase the R2 and reduce the RMSE. Therefore, we need to introduce more robust metric in order to make proper choice.
+
+Regarding R2, there is an adjusted version, called Adjusted R-squared, which adjusts the R2 for having too many variables in the model.
+
+
+Additionally, there are two other important metrics that are commonly used for model evaluation and selection:
+
+
+- **AIC** - The basic idea of AIC is to penalize the inclusion of additional variables to a model. It adds a penalty that increases the error when including additional terms. The lower the AIC, the better the model.
+- **BIC** - This is a variant of AIC with a stronger penalty for including additional variables to the model.
+
+In the next section, we will use **Adjusted R2**, **AIC** and **BIC** for comparing models.
+
 ```{r, echo=FALSE}
 model_all <- lm(MSFT_daily_ret_training ~
                   AAPL_daily_ret_training
