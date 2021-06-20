@@ -14,6 +14,7 @@ suppressMessages(library(fBasics))
 suppressMessages(library(np))
 suppressMessages(library(xts))
 suppressMessages(library(fGarch))
+suppressMessages(library(rugarch))
 ```
 
 ## Forecasting volatility
@@ -139,48 +140,74 @@ summary(GARCH_Model)
 
 plot(GARCH_Model, which = 'all')
 ```
-
-
-We 
 ``` {r}
 ```
 
 
-#### Fit the Threshold GARCH Model 
+#### Fit ARMA(0, 0) - eGARCH(1, 1) model with Student t-distribution 
 ``` {r}
+MSFT_garch_1 <- ugarchspec(mean.model = list(armaOrder=c(0,0)),
+                           variance.model = list(model = 'eGARCH', garchOrder = c(1, 1)),
+                           distribution = 'std')
+
+fit_garch_1 <- ugarchfit(spec = MSFT_garch_1, data=na.omit(training_set))
+fit_garch_1
+```
+
+
+
+#### Fit ARMA(1, 1) - eGARCH(1, 1) model with Student t-distribution
+``` {r}
+MSFT_garch_2 <- ugarchspec(mean.model = list(armaOrder=c(1,1)),
+                           variance.model = list(model = 'eGARCH',garchOrder = c(1, 1)),
+                           distribution = 'std')
+
+fit_garch_2 <- ugarchfit(spec = MSFT_garch_2, data= na.omit(training_set))
+
+fit_garch_2
+```
+
+
+#### Fit ARMA(2, 2) - eGARCH(1, 1) model with Student t-distribution
+``` {r}
+MSFT_garch_3 <- ugarchspec(mean.model = list(armaOrder=c(2,2)),
+                           variance.model = list(model = 'eGARCH',garchOrder = c(1, 1)),
+                           distribution = 'std')
+
+fit_garch_3 <- ugarchfit(spec = MSFT_garch_3, data= na.omit(training_set))
+
+fit_garch_3
+```
+
+## Selecting the best model based on Information Criteria
+
+TODO
+``` {r}
+Model = c('fit_garch_1','fit_garch_2','fit_garch_3')
+AIC = c(-5.4199, -5.4448, -5.4387)
+(model <- data.frame(Model,AIC))
+which.min(model[,'AIC'])
+```
+
+
+### Evaluate selected model
+
+We first do a forecast using the selected mdoel, we use rolling forcast method and predict entire out-of-sample set.  
+``` {r}
+fit_roll <- ugarchfit(MSFT_garch_2, 
+                      data = na.omit(original_set),
+                      out.sample = 110)
+
+fore_roll <- ugarchforecast(fit_roll, 
+                            n.ahead = 110, 
+                            n.roll = 110)
+
+plot(fore_roll, which='all')
 ```
 
 
 ``` {r}
-```
 
-
-#### 
-``` {r}
-```
-
-
-``` {r}
-```
-
-
-``` {r}
-```
-
-
-``` {r}
-```
-
-
-``` {r}
-```
-
-
-``` {r}
-```
-
-
-``` {r}
 ```
 
 ``` {r}
