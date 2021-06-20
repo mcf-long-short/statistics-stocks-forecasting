@@ -7,4 +7,198 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r echo=FALSE}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(fBasics))
+suppressMessages(library(np))
+suppressMessages(library(xts))
+suppressMessages(library(fGarch))
+```
+
 ## Forecasting volatility
+
+Read in the data we obtained in Phase 1. We calculate simple returns.
+```{r echo=FALSE}
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+```
+Plotting returns:
+
+```{r echo=FALSE}
+chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+```
+
+### Splitting the data
+
+We split the data on the in-sample (training) set and out-of-sample (testing) set. We split the data the same way as in Phase 2 and 3. 
+```{r}
+train_dataset_range <- '2019::2020'
+test_dataset_range <- '2021::'
+
+# Train and test data sets
+original_set <- ts(as.numeric(MSFT_xts.retDaily))
+training_set <- ts(as.numeric(MSFT_xts.retDaily[train_dataset_range]), frequency = 252, start=c(2019, 1))
+testing_set <- ts(as.numeric(MSFT_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+
+# Data sets size
+size <- length(original_set)
+training_set_size <- length(training_set)
+testing_set_size <- length(testing_set)
+
+print(sprintf("Number of observations in training set: %d (%.2f%%)", training_set_size, 100 * training_set_size / size))
+print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set_size, 100 * testing_set_size / size))
+```
+
+
+Looking at ACF and PACF plots we see that there's serial correlation.
+We take a look at regular, squared and absolute values for lag 10 and 30. 
+The regular ACF plot for lag 30 indicates that there's serial correlation up to 25th lag, but looking at the squared returns we see we actually need to the 30th lag.
+PACF plots show the same.
+
+```{r echo=FALSE}
+# ACF plot
+acf_plot_10 <- acf(original_set, lag=10, plot = FALSE)
+acf_plot_30 <- acf(original_set, lag=30, plot = FALSE)
+acf_plot_30_squared <- acf(original_set^2, lag=30, plot = FALSE)
+acf_plot_30_abs <- acf(abs(original_set), lag=30, plot = FALSE)
+
+
+plot(acf_plot_10, main = "ACF (10 lags)")
+plot(acf_plot_30, main = "ACF (30 lags)")
+plot(acf_plot_30_squared, main = "ACF (30 lags) squared")
+plot(acf_plot_30_abs, main = "ACF (30 lags) absolute")
+```
+
+```{r echo=FALSE}
+pacf_plot_10 <- pacf(original_set, lag=10, plot = FALSE)
+pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
+pacf_plot_30_squared <- pacf(original_set^2, lag=30, plot = FALSE)
+pacf_plot_30_abs <- pacf(abs(original_set), lag=30, plot = FALSE)
+
+plot(pacf_plot_10, main = "PACF (10 lags)")
+plot(pacf_plot_30, main = "PACF (30 lags)")
+plot(pacf_plot_30_squared, main = "PACF (30 lags) squared")
+plot(pacf_plot_30_abs, main = "PACF (30 lags) absolute")
+```
+
+We use Box-Ljung test to test serial correlation on the returns.
+Since the p-value is less than 5% we reject the null hypothesis that there is no serial correlation with strong evidence (p-value = 2.2e-16), i.e. there is serial correlation. THis means that we'll need to use ARMA + GARCH model. 
+```{r}
+Box.test(training_set, lag=30, type='Ljung')
+```
+We need to check if there's a ARCH effect in the data.
+Since the expected return of MSFT iz nor zero (calculated in Phase 1) we need to adjust for that.
+Since p-value is practically zero (2.2e-16), we reject the null hypothesis (that there's no conditional homoscedastcity). 
+This means that we have strong evidence to reject this hypothesis, hence, there's ARCH effect. 
+```{r echo=FALSE}
+archTest <- function(rtn, m=10){
+  # Perform Lagrange Multiplier Test for ARCH effect of a time series
+  # rtn: time series
+  # m: selected AR order
+  
+  y = (rtn-mean(rtn))^2
+  
+  T = length(rtn)
+  
+  atsq = y[(m + 1) : T]
+  
+  x = matrix(0, (T-m), m)
+  
+  for (i in 1:m){
+    x[, i] = y[(m + 1 - i) : (T - i)]
+  }
+  
+  md = lm(atsq~x)
+  
+  summary(md)
+}
+
+at = training_set - mean(training_set) 
+
+Box.test(at^2, lag = 30, type = 'Ljung')
+
+archTest(at, 30)
+```
+
+#### Fit the Gaussian ARMA–GARCH model
+
+Since we found that there's serial correlation we'll use ARMA(1, 1)-GARCH(2, 1) model with Student t-distribution. 
+
+Looking at the Standardised Resituals Tests, we conclude the following:
+  * The Jarque-Bera Test p-value is zero (1.362e-07) so we don't have normal distribution.
+  * There is weak evidence of correlation in our residuals and there's no dependence in conditional variance.
+  * The p-value for the LM Arch Test is 0.69 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
+``` {r}
+
+GARCH_Model = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'std')
+
+summary(GARCH_Model)
+
+plot(GARCH_Model, which = 'all')
+```
+
+
+We 
+``` {r}
+```
+
+
+#### Fit the Threshold GARCH Model 
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+#### 
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+``` {r}
+```
+
+
+``` {r}
+```
+
+``` {r}
+```
+
+``` {r}
+```
+
+
+
+``` {r}
+```
+
+
+
+``` {r}
+```
+
+
+
+
