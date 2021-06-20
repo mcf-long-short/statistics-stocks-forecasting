@@ -937,6 +937,25 @@ predict.1 <- function(f, df, M)
 
 ```
 
+```{r}
+# Function for one-period forecast
+predict.n <- function(f, df, M, n)
+{
+  P <- nrow(df) - M
+  results <- rep(0, P)
+
+  for (i in 1:(P/n)) {
+    df.pred <- df[(M+((i-1)*n)+1):(M+((i-1)*n)+n),]
+    df.est <- df[1:(M+(i-1)*n),]
+    for (j in 1:n) {
+      results[(i-1)*n+j] <- predict(lm(f, data=df.est), newdata=df.pred)[j]
+    }
+  }
+  results
+}
+```
+
+
 ```{r, echo=FALSE}
 training_dataset_length <- length(MSFT_daily_ret_training)
 test_dataset_length <- length(MSFT_daily_ret_test)
@@ -992,3 +1011,5 @@ pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
 # Calling accuracy function from forecast lib
 accuracy(pred.vals.1.third, as.numeric(MSFT_daily_ret_test))
 ```
+
+
