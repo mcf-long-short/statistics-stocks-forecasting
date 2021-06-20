@@ -208,7 +208,7 @@ Performin ADF test:
 adf.test(GOOG_prices)
 ```
 
-The significance level (p-value) for ADF test is really high (almost 100%), so we cannot reject the null hypothesis.
+The significance level (p-value) for ADF test is really high (around 96%), so we cannot reject the null hypothesis.
 
 
 Performin KPSS test:
@@ -266,4 +266,386 @@ The significance level (p-value) for KPSS test is more than 10%, so we are canno
 # Splitting the dataset
 GOOG_daily_ret_training <- ts(as.numeric(GOOG_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
 GOOG_daily_ret_test <- ts(as.numeric(GOOG_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+### IBM (IBM)
+
+#### Stock prices
+
+
+Let's see the graph of IBM closing prices for the past two and a half years:
+```{r, echo=FALSE}
+IBM <- read.csv(file = "../data/IBM.csv", row.names = 1, header = TRUE)
+IBM_xts <- xts(IBM[, 1:5], order.by=as.POSIXct(IBM$date))
+
+chartSeries(IBM_xts$IBM.Close, theme = "white", up.col="blue", name = "IBM - Closing prices")
+
+# Converting to ts object
+IBM_prices <- ts(as.numeric(IBM_xts$IBM.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of seasonality.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(IBM_prices, lag.max = length(IBM_prices), main="IBM Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performin ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(IBM_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 22%), so we cannot reject the null hypothesis.
+
+
+Performin KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(IBM_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of IBM daily returns for the past two and a half years:
+```{r, echo=FALSE}
+IBM_xts.retDaily <- periodReturn(IBM_xts, period = "daily")
+chartSeries(IBM_xts.retDaily, theme = "white", up.col="blue", name = "IBM - Daily returns")
+
+IBM_retDaily <-ts(as.numeric(IBM_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(IBM_retDaily, lag.max = length(IBM_retDaily), main="IBM Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(IBM_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(IBM_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+IBM_daily_ret_training <- ts(as.numeric(IBM_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+IBM_daily_ret_test <- ts(as.numeric(IBM_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+
+### 3M (MMM)
+
+#### Stock prices
+
+
+Let's see the graph of 3M closing prices for the past two and a half years:
+```{r, echo=FALSE}
+MMM <- read.csv(file = "../data/MMM.csv", row.names = 1, header = TRUE)
+MMM_xts <- xts(MMM[, 1:5], order.by=as.POSIXct(MMM$date))
+
+chartSeries(MMM_xts$MMM.Close, theme = "white", up.col="blue", name = "MMM - Closing prices")
+
+# Converting to ts object
+MMM_prices <- ts(as.numeric(MMM_xts$MMM.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(MMM_prices, lag.max = length(MMM_prices), main="MMM Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performin ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(MMM_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 79%), so we cannot reject the null hypothesis.
+
+
+Performin KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(MMM_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of 3M daily returns for the past two and a half years:
+```{r, echo=FALSE}
+MMM_xts.retDaily <- periodReturn(MMM_xts, period = "daily")
+chartSeries(MMM_xts.retDaily, theme = "white", up.col="blue", name = "MMM - Daily returns")
+
+MMM_retDaily <-ts(as.numeric(MMM_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(MMM_retDaily, lag.max = length(MMM_retDaily), main="MMM Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(MMM_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(MMM_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+MMM_daily_ret_training <- ts(as.numeric(MMM_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+MMM_daily_ret_test <- ts(as.numeric(MMM_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+### S&p500 (^GSPC)
+
+#### Stock prices
+
+
+Let's see the graph of S&p500 closing prices for the past two and a half years:
+```{r, echo=FALSE}
+SP500 <- read.csv(file = "../data/S&P500.csv", row.names = 1, header = TRUE)
+SP500_xts <- xts(SP500[, 1:5], order.by=as.POSIXct(SP500$date))
+
+chartSeries(SP500_xts$GSPC.Close, theme = "white", up.col="blue", name = "SP500 - Closing prices")
+
+# Converting to ts object
+SP500_prices <- ts(as.numeric(SP500_xts$GSPC.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(SP500_prices, lag.max = length(SP500_prices), main="SP500 Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performin ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(SP500_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 66%), so we cannot reject the null hypothesis.
+
+
+Performin KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(SP500_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of S&p500 daily returns for the past two and a half years:
+```{r, echo=FALSE}
+SP500_xts.retDaily <- periodReturn(SP500_xts, period = "daily")
+chartSeries(SP500_xts.retDaily, theme = "white", up.col="blue", name = "SP500 - Daily returns")
+
+SP500_retDaily <-ts(as.numeric(SP500_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(SP500_retDaily, lag.max = length(SP500_retDaily), main="SP500 Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(SP500_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(SP500_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+SP500_daily_ret_training <- ts(as.numeric(SP500_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+SP500_daily_ret_test <- ts(as.numeric(SP500_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+
+### Nasdaq (^IXIC)
+
+#### Stock prices
+
+
+Let's see the graph of Nasdaq closing prices for the past two and a half years:
+```{r, echo=FALSE}
+Nasdaq <- read.csv(file = "../data/Nasdaq.csv", row.names = 1, header = TRUE)
+Nasdaq_xts <- xts(Nasdaq[, 1:5], order.by=as.POSIXct(Nasdaq$date))
+
+chartSeries(Nasdaq_xts$IXIC.Close, theme = "white", up.col="blue", name = "Nasdaq - Closing prices")
+
+# Converting to ts object
+Nasdaq_prices <- ts(as.numeric(Nasdaq_xts$IXIC.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(Nasdaq_prices, lag.max = length(Nasdaq_prices), main="Nasdaq Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performin ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(Nasdaq_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 57%), so we cannot reject the null hypothesis.
+
+
+Performin KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(Nasdaq_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of Nasdaq daily returns for the past two and a half years:
+```{r, echo=FALSE}
+Nasdaq_xts.retDaily <- periodReturn(Nasdaq_xts, period = "daily")
+chartSeries(Nasdaq_xts.retDaily, theme = "white", up.col="blue", name = "Nasdaq - Daily returns")
+
+Nasdaq_retDaily <-ts(as.numeric(Nasdaq_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(Nasdaq_retDaily, lag.max = length(Nasdaq_retDaily), main="Nasdaq Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(Nasdaq_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(Nasdaq_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+Nasdaq_daily_ret_training <- ts(as.numeric(Nasdaq_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+Nasdaq_daily_ret_test <- ts(as.numeric(Nasdaq_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
 ```
