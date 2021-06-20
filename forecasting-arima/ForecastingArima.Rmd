@@ -7,4 +7,71 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Forecasting with ARIMA
+## Forecasting univariate time series models (ARIMA models)
+
+```{r echo=FALSE}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(forecast))
+```
+
+
+```{r echo=FALSE}
+# Reading data set
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+
+# Converting price series to xts objects
+# (in order to work with quantmod library)
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+
+# Printing MSFT daily returns
+tail(MSFT_xts.retDaily)
+```
+
+
+```{r echo=FALSE}
+# Splitting data set to training set and testing set
+train_dataset_range <- '2019::2020'
+test_dataset_range <- '2021::'
+
+# Train and test data sets
+original_set <- ts(as.numeric(MSFT_xts.retDaily))
+training_set <- ts(as.numeric(MSFT_xts.retDaily[train_dataset_range]), frequency = 252, start=c(2019, 1))
+testing_set <- ts(as.numeric(MSFT_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+
+# Data sets size
+size <- length(original_set)
+training_set_size <- length(training_set)
+testing_set_size <- length(testing_set)
+
+print(sprintf("Number of observations in training set: %d (%.2f%%)", training_set_size, 100 * training_set_size / size))
+print(sprintf("Number of observations in testing set: %d (%.2f%%)" , testing_set_size, 100 * testing_set_size / size))
+```
+
+```{r echo=FALSE}
+chartSeries(MSFT_xts.retDaily, theme = "white", up.col="blue", name = "MSFT - Daily returns")
+```
+
+```{r echo=FALSE}
+# ACF plot
+acf_plot_10 <- acf(original_set, lag=10, plot = FALSE)
+acf_plot_30 <- acf(original_set, lag=30, plot = FALSE)
+plot(acf_plot_10, main = "ACF (10 lags)")
+plot(acf_plot_30, main = "ACF (30 lags)")
+
+# PACF plot
+pacf_plot_10 <- pacf(original_set, lag=10, plot = FALSE)
+pacf_plot_30 <- pacf(original_set, lag=30, plot = FALSE)
+plot(pacf_plot_10, main = "PACF (10 lags)")
+plot(pacf_plot_30, main = "PACF (30 lags)")
+```
+
+```{r echo=FALSE}
+# ETS decomposition
+original_set <- ts(as.numeric(MSFT_xts.retDaily), frequency = 252, start=c(2019, 1))
+autoplot(decompose(original_set))
+```
+
+
+
