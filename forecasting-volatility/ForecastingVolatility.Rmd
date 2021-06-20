@@ -15,6 +15,7 @@ suppressMessages(library(np))
 suppressMessages(library(xts))
 suppressMessages(library(fGarch))
 suppressMessages(library(rugarch))
+suppressMessages(library(Metrics))
 ```
 
 ## Forecasting volatility
@@ -144,22 +145,29 @@ plot(GARCH_Model, which = 'all')
 ```
 
 
-#### Fit ARMA(0, 0) - eGARCH(1, 1) model with Student t-distribution 
+
+#### Fit ARMA(1, 1) - eGARCH(1, 1) model with Student t-distribution
+
+Since we found that there's serial correlation we'll use ARMA(1, 1)-GARCH(1, 1) model with Student t-distribution. 
+
+There is weak evidence of correlation in our residuals and there's no dependence in conditional variance.
+The p-value for the LM Arch Test is 0.56 (not rejecting the null) which means that there's no additional ARCH effect our model didn't captured.
 ``` {r}
-MSFT_garch_1 <- ugarchspec(mean.model = list(armaOrder=c(0,0)),
+MSFT_garch_1 <- ugarchspec(mean.model = list(armaOrder = c(1, 1)),
                            variance.model = list(model = 'eGARCH', garchOrder = c(1, 1)),
                            distribution = 'std')
 
-fit_garch_1 <- ugarchfit(spec = MSFT_garch_1, data=na.omit(training_set))
+fit_garch_1 <- ugarchfit(spec = MSFT_garch_1, data= na.omit(training_set))
+
 fit_garch_1
 ```
 
 
+#### Fit ARMA(1, 1) - eGARCH(2, 1) model with Student t-distribution
 
-#### Fit ARMA(1, 1) - eGARCH(1, 1) model with Student t-distribution
 ``` {r}
-MSFT_garch_2 <- ugarchspec(mean.model = list(armaOrder=c(1,1)),
-                           variance.model = list(model = 'eGARCH',garchOrder = c(1, 1)),
+MSFT_garch_2 <- ugarchspec(mean.model = list(armaOrder = c(1, 1)),
+                           variance.model = list(model = 'eGARCH', garchOrder = c(2, 1)),
                            distribution = 'std')
 
 fit_garch_2 <- ugarchfit(spec = MSFT_garch_2, data= na.omit(training_set))
@@ -168,10 +176,11 @@ fit_garch_2
 ```
 
 
-#### Fit ARMA(2, 2) - eGARCH(1, 1) model with Student t-distribution
+#### Fit ARMA(1, 1) - eGARCH(2, 2) model with Student t-distribution
+
 ``` {r}
-MSFT_garch_3 <- ugarchspec(mean.model = list(armaOrder=c(2,2)),
-                           variance.model = list(model = 'eGARCH',garchOrder = c(1, 1)),
+MSFT_garch_3 <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
+                           variance.model = list(model = 'eGARCH',garchOrder = c(2, 2)),
                            distribution = 'std')
 
 fit_garch_3 <- ugarchfit(spec = MSFT_garch_3, data= na.omit(training_set))
@@ -179,12 +188,24 @@ fit_garch_3 <- ugarchfit(spec = MSFT_garch_3, data= na.omit(training_set))
 fit_garch_3
 ```
 
+#### Fit ARMA(1, 1) - eGARCH(3, 1) model with Student t-distribution
+
+``` {r}
+MSFT_garch_4 <- ugarchspec(mean.model = list(armaOrder=c(1, 1)),
+                           variance.model = list(model = 'eGARCH',garchOrder = c(3, 1)),
+                           distribution = 'std')
+
+fit_garch_4 <- ugarchfit(spec = MSFT_garch_4, data= na.omit(training_set))
+
+fit_garch_4
+```
+
+
 ## Selecting the best model based on Information Criteria
 
-TODO
 ``` {r}
-Model = c('fit_garch_1','fit_garch_2','fit_garch_3')
-AIC = c(-5.4199, -5.4448, -5.4387)
+Model = c('fit_garch_1', 'fit_garch_2', 'fit_garch_3', 'fit_garch_4')
+AIC = c(-5.4448, -5.4386, -5.4344, -5.4364)
 (model <- data.frame(Model,AIC))
 which.min(model[,'AIC'])
 ```
@@ -194,7 +215,7 @@ which.min(model[,'AIC'])
 
 We first do a forecast using the selected mdoel, we use rolling forcast method and predict entire out-of-sample set.  
 ``` {r}
-fit_roll <- ugarchfit(MSFT_garch_2, 
+fit_roll <- ugarchfit(MSFT_garch_1, 
                       data = na.omit(original_set),
                       out.sample = 110)
 
@@ -202,13 +223,17 @@ fore_roll <- ugarchforecast(fit_roll,
                             n.ahead = 110, 
                             n.roll = 110)
 
-plot(fore_roll, which='all')
+predictions <- fore_roll@forecast$sigmaFor
+target_values <- fore_roll@forecast$seriesFor
+
+selected_model_rmse <- rmse(predictions, target_values)
+
+print(sprintf("RMSE of selected model %f", selected_model_rmse))
+
+plot(fore_roll, which=2)
+plot(fore_roll, which=4)
 ```
 
-
-``` {r}
-
-```
 
 ``` {r}
 ```
