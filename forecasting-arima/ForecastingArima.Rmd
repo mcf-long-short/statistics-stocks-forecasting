@@ -617,9 +617,23 @@ in terms of the `one-period-ahead forecast` and forecast at horizon of
 
 Out testing sample if from `01-01-2020` to `06-10-2021`.
 
-For evaluation model forecast performance, we will use `MSFE` 
+For `evaluating model forecast performance`, we will use `MSFE` 
 (`Mean Squared Forecast Error`). Compared to the mean absolute forecast error, 
 MSFE if good for outliers, big errors.
+
+For `comparing two models` aside from MSFE, we'll use `DM (Diebold-Mariano) test`.
+It checks whether the forecast error is significant or simply due to the specific
+choice of data in our sample. If we have two forecasting sequences (from two
+different models) e.g. `Ej` and `Ei`. The test calculates `loss differential` as
+`dj = Ej^2 + Ei^2` or `dj = |Ej| + |Ei|`, depending if we use MSFE or MAFE to
+calculate forecast errors. Equal model accuracy means that the `expected loss`
+`differential is 0`. That is the null hypothesis, that the models have the same
+accuracy. We also need to specify the alternative hypothesis:
+
+- "two.sided" (default)
+- "greater" 
+- "less"
+
 
 ### One-period-ahead forecast
 
@@ -747,6 +761,39 @@ legend(
 )
 ```
 
+Let's now do model accuracy comparison using `DM tests`. We will be comparing
+`ARMA(2,3)` against:
+
+- ARMA(2,2)
+- ARMA(2,1)
+- AR(8)
+
+`DM test: ARMA(2,3) and ARMA(2,2)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
+```
+P-value (0.2231) is less than 0.5 so we reject the null hypothesis and accept the
+specified alrernative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
+
+
+`DM test: ARMA(2,3) and ARMA(2,1)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
+```
+P-value (0.2383) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
+
+
+
+`DM test: ARMA(2,3) and AR(8)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
+```
+P-value (0.0154) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
+
+
+
 ### Multi-period-ahead forecast
 
 In this section we will repeat foreacting and evaluation it on testing data set,
@@ -863,6 +910,39 @@ legend(
   legend=c("Test sample","ARMA(2,3)")
 )
 ```
+
+Let's now do model accuracy comparison using `DM tests`. We will be comparing
+`ARMA(2,3)` against:
+
+- ARMA(2,2)
+- ARMA(2,1)
+- AR(8)
+
+`DM test: ARMA(2,3) and ARMA(2,2)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma22_forecast_error, "less", h=1)
+```
+P-value (0.2571) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,2) is less accurate than the ARMA(2,3).
+
+
+`DM test: ARMA(2,3) and ARMA(2,1)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, arma21_forecast_error, "less", h=1)
+```
+P-value (0.01766) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the ARMA(2,1) is less accurate than the ARMA(2,3).
+
+
+
+`DM test: ARMA(2,3) and AR(8)`
+```{r echo=FALSE}
+dm.test(arma23_forecast_error, ar8_forecast_error, "less", h=1)
+```
+P-value (0.00566) is less than 0.5 so we reject the null hypothesis and accept the
+specified alternative - that the AR(8) is less accurate than the ARMA(2,3).
+
+
 
 ## Model comparison overview
 
