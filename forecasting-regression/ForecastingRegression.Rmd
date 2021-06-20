@@ -1,5 +1,5 @@
 ---
-title: "Forecasting - Regression"
+title: "Forecasting multivariate time series models (regression models)"
 output: html_document
 ---
 
@@ -7,4 +7,113 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Forecasting with regression
+
+```{r echo=FALSE, warning=FALSE}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(forecast))
+suppressMessages(library(tseries))
+```
+
+```{r echo=FALSE}
+training_dataset_range <- '2019::2020'
+test_dataset_range <- '2021::'
+```
+
+## Introduction
+
+The goal of this phase is to produce the best `multivariate regression model` 
+for forecasting the return on our stock of choice - Microsoft. For that we will
+use family of Linear regression models to find the best performing model.
+
+
+The dependent variable in our regression model will be daily returns of Microsoft.
+The chosen explanatory (independent) variables are also stocks (potential competitors) and stock market stock indexes.
+
+Potential regressors in our regression models are:
+
+- Apple (AAPL)
+- Google (GOOG)
+- IBM (IBM)
+- 3M (MMM)
+- S&P500 (^GSPC)
+- Nasdaq (^IXIC)
+
+
+## Splitting the dataset ("in-sample and" "out-of-sample")
+
+The dataset splitting for dependent variable (Microsoft daily returns) has been done in the previous phase.
+
+The training data set will contain daily return data from 2019. and 2020. and the test data will only contain first six months of 2021.
+
+
+```{r, echo=FALSE}
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+
+MSFT_daily_ret_original <- ts(as.numeric(MSFT_xts.retDaily))
+MSFT_daily_ret_training <- ts(as.numeric(MSFT_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+MSFT_daily_ret_test <- ts(as.numeric(MSFT_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+
+```
+
+In order to split the dataset for potential regressors, we first need to check the stationarity properties of these time series, which is described in the next section.
+
+
+## Stationarity property of explanatory variables
+
+In this section, we will check the stationarity property of each time series.
+That means, it needs to be determined that the time series is constant in mean and variance are constant and not dependent on time.
+
+We will look at couple of methods for checking stationarity:
+
+- Autocorrelation Function (ACF) - Identifying if correlation at different time lags goes to 0
+- Augmented Dickey–Fuller (ADF) t-statistic test for unit root
+- Kwiatkowski-Phillips-Schmidt-Shin (KPSS) for level or trend stationarity
+
+### Apple (AAPL)
+```{r, echo=FALSE}
+AAPL <- read.csv(file = "../data/AAPL.csv", row.names = 1, header = TRUE)
+AAPL_xts <- xts(AAPL[, 1:5], order.by=as.POSIXct(AAPL$date))
+
+chartSeries(AAPL_xts$AAPL.Close, theme = "white", up.col="blue", name = "AAPL - Closing prices")
+
+# Converting to ts object
+AAPL_prices <- ts(as.numeric(AAPL_xts$AAPL.Close))
+```
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(AAPL_prices, lag.max = length(AAPL_prices))
+
+# ADF test - closing price
+adf.test(AAPL_prices)
+
+# KPSS test - closing price
+kpss.test(AAPL_prices, null="Trend")
+```
+
+```{r, echo=FALSE}
+AAPL_xts.retDaily <- periodReturn(AAPL_xts, period = "daily")
+chartSeries(AAPL_xts.retDaily, theme = "white", up.col="blue", name = "AAPL - Daily returns")
+
+AAPL_retDaily <-ts(as.numeric(AAPL_xts.retDaily))
+```
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(AAPL_retDaily, lag.max = length(AAPL_retDaily))
+
+# ADF test - closing price
+adf.test(AAPL_retDaily)
+
+# KPSS test - closing price
+kpss.test(AAPL_retDaily, null="Trend")
+
+```
+``` {r, echo=FALSE}
+# Splitting the dataset
+AAPL_daily_ret_training <- ts(as.numeric(AAPL_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+AAPL_daily_ret_test <- ts(as.numeric(AAPL_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
