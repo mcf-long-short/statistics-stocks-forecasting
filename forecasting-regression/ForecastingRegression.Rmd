@@ -915,3 +915,80 @@ RSE is also really low (0.008).
 
 Both AIC and BIC are lowest among all models.
 
+
+## Evaluating forecast performance
+
+
+
+```{r, echo=FALSE}
+# Function for one-period forecast
+predict.1 <- function(f, df, M)
+{
+  P <- nrow(df) - M
+  results <- rep(0, P)
+
+  for (i in 1:P) {
+    df.pred <- df[M+i,]
+    df.est <- df[1:(M+i-1),]
+    results[i] <- predict(lm(f, data=df.est), newdata=df.pred)
+  }
+  results
+}
+
+```
+
+```{r, echo=FALSE}
+training_dataset_length <- length(MSFT_daily_ret_training)
+test_dataset_length <- length(MSFT_daily_ret_test)
+```
+
+### Best fit model - 3M and Nasdaq
+```{r, echo=FALSE}
+# Winning model data transformation
+model_winner = MSFT_daily_ret_original~MMM_retDaily+Nasdaq_retDaily
+df_winner = as.data.frame(cbind(MSFT_daily_ret_original, MMM_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.1.winner <- predict.1(model_winner, df_winner, training_dataset_length)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.1.winner, as.numeric(MSFT_daily_ret_test))
+```
+
+### Runner up model - Nasdaq and S&P 500
+```{r, echo=FALSE}
+# Runner-up model data transformation
+model_runner_up = MSFT_daily_ret_original~SP500_retDaily+Nasdaq_retDaily
+df_runner_up = as.data.frame(cbind(MSFT_daily_ret_original, SP500_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.1.runner_up <- predict.1(model_runner_up, df_runner_up, training_dataset_length)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.1.runner_up, as.numeric(MSFT_daily_ret_test))
+```
+
+### Third model - Google and Nasdaq
+```{r, echo=FALSE}
+# Third model data transformation
+model_third = MSFT_daily_ret_original~GOOG_retDaily+Nasdaq_retDaily
+df_third = as.data.frame(cbind(MSFT_daily_ret_original, GOOG_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.1.third, as.numeric(MSFT_daily_ret_test))
+```
