@@ -708,7 +708,7 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_all), digits = 3))))
 ```
 
-From the results above, we can see that only two variables are statistically significant (p-value lower than 5%): ``3M`` and ``Nasdaq`` daily returns.
+From the results above, we can see that only two variables are statistically significant (p-value lower than 5%): `3M` and `Nasdaq` daily returns.
 We can reject the null hypothesis and state that these two coefficients are not 0.
 
 
@@ -726,7 +726,7 @@ We can also see that both AIC and BIC are really low (negative), but these value
 
 ### Regression model with market stock indexes as explanatory variables
 
-Let's now include only ``S&P500`` and ``Nasdaq`` daily returns.
+Let's now include only `S&P500` and `Nasdaq` daily returns.
 
 ```{r, echo=FALSE}
 model_indexes <- lm(MSFT_daily_ret_training ~
@@ -772,7 +772,7 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_competition), digits = 3))))
 ```
 
-Quite interesting results. Now, all coefficients are statistically significant except ``3M`` (p-value is around 9%).
+Quite interesting results. Now, all coefficients are statistically significant except `3M` (p-value is around 9%).
 
 
 The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
@@ -789,7 +789,7 @@ We can also see that both AIC and BIC are low (negative), but they are higher th
 
 ### Regression model with competitors and Nasdaq index as explanatory variables
 
-Let's see what happens if we add ``Nasdaq`` index to the previous model as explanatory variable:
+Let's see what happens if we add `Nasdaq` index to the previous model as explanatory variable:
 
 ```{r, echo=FALSE}
 model_competition_nasdaq <- lm(MSFT_daily_ret_training ~
@@ -808,7 +808,7 @@ cat(paste("BIC: ",toString(round(BIC(model_competition_nasdaq), digits = 3))))
 Well, this model is similar to the first model (where we included all explanatory variables).
 
 
-We can see that only two variables are statistically significant (p-value lower than 5%): ``3M`` and ``Nasdaq`` daily returns.
+We can see that only two variables are statistically significant (p-value lower than 5%): `3M` and `Nasdaq` daily returns.
 
 
 We can reject the null hypothesis and state that these two coefficients are not 0.
@@ -821,7 +821,7 @@ This model is the candidate for the winner.
 
 ### Regression model with competitors and S&P500 index as explanatory variables
 
-Let's try something similar. Instead of ``Nasdaq``, let's include ``S&P500`` index.
+Let's try something similar. Instead of `Nasdaq`, let's include `S&P500` index.
 
 ```{r, echo=FALSE}
 model_competition_sp500 <-  lm(MSFT_daily_ret_training ~
@@ -837,7 +837,7 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_competition_sp500), digits = 3))))
 ```
 
-From the results above, we can conclude that all coefficients are statistically significant (p-value lower than 5%), except ``IBM`` which is slightly above 5%, but we cannot reject the null hypothesis i.e. we cannot guarantee that this coefficient is not zero.
+From the results above, we can conclude that all coefficients are statistically significant (p-value lower than 5%), except `IBM` which is slightly above 5%, but we cannot reject the null hypothesis i.e. we cannot guarantee that this coefficient is not zero.
 
 
 The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
@@ -857,8 +857,8 @@ This model is the good candidate for evaluating the forecast performance which w
 
 ### Regression model with Google and Nasdaq index as explanatory variables
 
-In the previous models, we saw that ``3M`` and ``Nasdaq`` show best results for linear regression.
-Let's try ``Google`` and ``Nasdaq``:
+In the previous models, we saw that `3M` and `Nasdaq` show best results for linear regression.
+Let's try `Google` and `Nasdaq`:
 ```{r, echo=FALSE}
 model_google_nasdaq <-      lm(MSFT_daily_ret_training ~
                                   GOOG_daily_ret_training
@@ -870,7 +870,7 @@ cat('\n')
 cat(paste("BIC: ",toString(round(BIC(model_google_nasdaq), digits = 3))))
 ```
 
-From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%). ``Google`` is slightly under 5%.
+From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%). `Google` is slightly under 5%.
 
 
 We can reject the null hypothesis and state that these two coefficients are not 0.
@@ -891,7 +891,7 @@ We can also see that both AIC and BIC are really low (negative).
 ### Regression model with 3M and Nasdaq index as explanatory variables
 
 
-From the previous evaluation models, we have seen that ``3M`` and ``Nasdaq`` gave best results.
+From the previous evaluation models, we have seen that `3M` and `Nasdaq` gave best results.
 However, they were combined with other explanatory variables.
 
 Let's have a look when we include only these two explanatory variables:
@@ -918,7 +918,18 @@ Both AIC and BIC are lowest among all models.
 
 ## Evaluating forecast performance
 
+In this section, we will evaluate the forecast performance for the three models from previous section.
 
+The models that are competing are:
+
+- `3M` and `Nasdaq`
+- `S&P 500` and `Nasdaq`
+- `GOOGLE` and `Nasdaq`
+
+As it was mentioned in the arima forecasting section, forecast performance is evaluated over the entire `testing data set`. We will
+use `rolling scheme` to produce the forecasts. Models will be evaluated
+in terms of the `one-period-ahead forecast` and forecast at horizon of 
+`five-periods-ahead` (one trading week).
 
 ```{r, echo=FALSE}
 # Function for one-period forecast
@@ -937,8 +948,8 @@ predict.1 <- function(f, df, M)
 
 ```
 
-```{r}
-# Function for one-period forecast
+```{r, echo=FALSE}
+# Function for multi-period forecast
 predict.n <- function(f, df, M, n)
 {
   P <- nrow(df) - M
@@ -961,7 +972,9 @@ training_dataset_length <- length(MSFT_daily_ret_training)
 test_dataset_length <- length(MSFT_daily_ret_test)
 ```
 
-### Best fit model - 3M and Nasdaq
+### One-period-ahead forecast
+
+#### Best fit model - 3M and Nasdaq
 ```{r, echo=FALSE}
 # Winning model data transformation
 model_winner = MSFT_daily_ret_original~MMM_retDaily+Nasdaq_retDaily
@@ -971,6 +984,7 @@ df_winner = as.data.frame(cbind(MSFT_daily_ret_original, MMM_retDaily, Nasdaq_re
 ```{r, echo=FALSE}
 # Forecasting
 pred_vals_1_winner <- predict.1(model_winner, df_winner, training_dataset_length)
+errors_1_winner <- pred_vals_1_winner - as.numeric(MSFT_daily_ret_test)
 ```
 
 ```{r, echo=FALSE}
@@ -978,7 +992,7 @@ pred_vals_1_winner <- predict.1(model_winner, df_winner, training_dataset_length
 accuracy(pred_vals_1_winner, as.numeric(MSFT_daily_ret_test))
 ```
 
-### Runner up model - Nasdaq and S&P 500
+#### Runner up model - Nasdaq and S&P 500
 ```{r, echo=FALSE}
 # Runner-up model data transformation
 model_runner_up = MSFT_daily_ret_original~SP500_retDaily+Nasdaq_retDaily
@@ -988,6 +1002,7 @@ df_runner_up = as.data.frame(cbind(MSFT_daily_ret_original, SP500_retDaily, Nasd
 ```{r, echo=FALSE}
 # Forecasting
 pred.vals.1.runner_up <- predict.1(model_runner_up, df_runner_up, training_dataset_length)
+errors_1_runner_up <- pred.vals.1.runner_up - as.numeric(MSFT_daily_ret_test)
 ```
 
 ```{r, echo=FALSE}
@@ -995,7 +1010,7 @@ pred.vals.1.runner_up <- predict.1(model_runner_up, df_runner_up, training_datas
 accuracy(pred.vals.1.runner_up, as.numeric(MSFT_daily_ret_test))
 ```
 
-### Third model - Google and Nasdaq
+#### Third model - Google and Nasdaq
 ```{r, echo=FALSE}
 # Third model data transformation
 model_third = MSFT_daily_ret_original~GOOG_retDaily+Nasdaq_retDaily
@@ -1005,6 +1020,7 @@ df_third = as.data.frame(cbind(MSFT_daily_ret_original, GOOG_retDaily, Nasdaq_re
 ```{r, echo=FALSE}
 # Forecasting
 pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
+errors_1_third <- pred.vals.1.third - as.numeric(MSFT_daily_ret_test)
 ```
 
 ```{r, echo=FALSE}
@@ -1012,4 +1028,89 @@ pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
 accuracy(pred.vals.1.third, as.numeric(MSFT_daily_ret_test))
 ```
 
+Based on the results above, we can see that we now have the reverse order of best matching models.
 
+The RMSE (Root Mean Squared Error) is lowest for the third regression model.
+
+It is still tight race, but for the one-period-ahead forecast, the winner is the third model which has `GOOGLE` and `Nasdaq` as explanatory variables in regression model.
+
+
+Besides RMSE for comparing two models, we will use `DM (Diebold-Mariano) test`.
+It checks whether the forecast error is significant or simply due to the specific
+choice of data in our sample.
+
+Let's compare new favorite model with two others:
+
+`Comparison GOOGLE-Nasdaq and SP500-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_1_third, errors_1_runner_up, "less", h=1)
+```
+
+`Comparison GOOGLE-Nasdaq and 3M-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_1_third, errors_1_winner, "less", h=1)
+```
+
+Based on the results above, and the p-values (below 5%), we can state that we have a winner for one-period-ahead forecast and that is the third model from previous section (`GOOGLE-Nasdaq` regression model).
+
+
+### Multi-period-ahead forecast
+
+#### Best fit model - 3M and Nasdaq
+
+```{r, echo=FALSE}
+# Forecasting
+pred_vals_5_winner <- predict.n(model_winner, df_winner, training_dataset_length, 5)
+errors_5_winner <- pred_vals_5_winner - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred_vals_5_winner, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Runner up model - Nasdaq and S&P 500
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.5.runner_up <- predict.n(model_runner_up, df_runner_up, training_dataset_length, 5)
+errors_5_runner_up <- pred.vals.5.runner_up - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.5.runner_up, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Third model - Google and Nasdaq
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.5.third <- predict.n(model_third, df_third, training_dataset_length, 5)
+errors_5_third <- pred.vals.5.third - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.5.third, as.numeric(MSFT_daily_ret_test))
+```
+
+Based on the results above, we can see that we now have the reverse order of best matching models again.
+
+The RMSE (Root Mean Squared Error) is lowest for the third regression model.
+
+The metric values are pretty much the same like in one-period-ahead forecast.
+
+But let's do the `Diebold-Mariano` tests again.
+
+Let's compare new favorite model with two others:
+
+`Comparison GOOGLE-Nasdaq and SP500-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_5_third, errors_5_runner_up, "less", h=5)
+```
+
+`Comparison GOOGLE-Nasdaq and 3M-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_5_third, errors_5_winner, "less", h=5)
+```
+
+Based on the results above, and the p-values (below 5%), we can state that we have a winner for one-period-ahead forecast and that is the third model from previous section (`GOOGLE-Nasdaq` regression model).
