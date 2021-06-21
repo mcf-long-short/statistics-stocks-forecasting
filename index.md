@@ -2,7 +2,7 @@
 
 ### Introduction
 
-This document represents group project work for course in `Statistics and Financial Data Analysis` for advanced degree [Masters in Computational Finance, Union University](http://mcf.raf.edu.rs/).
+This document represents group project work for course in **Statistics and Financial Data Analysis** for advanced degree [Masters in Computational Finance, Union University](http://mcf.raf.edu.rs/).
 
 Professor:
 [Prof. Milan Nedeljkovic, PhD](https://www.fefa.edu.rs/profesori/Milan-Nedeljkovic/)
