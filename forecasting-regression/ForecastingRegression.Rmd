@@ -1028,6 +1028,19 @@ errors_1_third <- pred.vals.1.third - as.numeric(MSFT_daily_ret_test)
 accuracy(pred.vals.1.third, as.numeric(MSFT_daily_ret_test))
 ```
 
+
+```{r, echo=FALSE}
+plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="One-period-ahead forecasts", xlab="Days ahead", ylab="Returns")
+lines(pred_vals_1_winner, type="l", pch=22, lty=2, col="red")
+#lines(pred.vals.1.runner_up, type="l", pch=22, lty=2, col="green")
+#lines(pred.vals.1.third, type="l", pch=22, lty=2, col="blue")
+
+#legend( 
+#  "topright", inset=c(-0.06, 0), text.col=c("black", "red","green", "blue"), 
+#  legend=c("Test sample","3M-Nasdaq","S&P500-Nasdaq","GOOGLE-Nasdaq")
+#)
+```
+
 Based on the results above, we can see that we now have the reverse order of best matching models.
 
 The RMSE (Root Mean Squared Error) is lowest for the third regression model.
@@ -1093,6 +1106,18 @@ errors_5_third <- pred.vals.5.third - as.numeric(MSFT_daily_ret_test)
 accuracy(pred.vals.5.third, as.numeric(MSFT_daily_ret_test))
 ```
 
+```{r, echo=FALSE}
+plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="Multi-period-ahead forecasts", xlab="Days ahead", ylab="Returns")
+lines(pred_vals_5_winner, type="l", pch=22, lty=2, col="red")
+#lines(pred.vals.5.runner_up, type="l", pch=22, lty=2, col="green")
+#lines(pred.vals.5.third, type="l", pch=22, lty=2, col="blue")
+
+#legend( 
+#  "topright", inset=c(-0.06, 0), text.col=c("black", "red","green", "blue"), 
+#  legend=c("Test sample","3M-Nasdaq","S&P500-Nasdaq","GOOGLE-Nasdaq")
+#)
+```
+
 Based on the results above, we can see that we now have the reverse order of best matching models again.
 
 The RMSE (Root Mean Squared Error) is lowest for the third regression model.
@@ -1114,3 +1139,39 @@ dm.test(errors_5_third, errors_5_winner, "less", h=5)
 ```
 
 Based on the results above, and the p-values (below 5%), we can state that we have a winner for one-period-ahead forecast and that is the third model from previous section (`GOOGLE-Nasdaq` regression model).
+
+## Model comparison
+
+After evaluating forecast performance in the previous section, and after we performed the tests, we can conclude that regression mode that has `GOOGLE` and `Nasdaq` as explanatory is the best fit.
+
+Here is the brief overview of the key metrics for that model: 
+
+|    Metric                 |       Google - Nasdaq         |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -3401.212             |
+| **BIC**                   |         -3384.313             |
+| **RMSE (1-period-ahead)** |         0.009104144           |
+| **RMSE (5-period-ahead)** |         0.009110567           |
+
+
+Now it is time to compare the results from Phase 2 - Forecasting ARIMA.
+
+The model that proved to be the best fit, in all of the phases, in all the tests
+and for all used metrics was the `ARMA(2,3)`.
+
+We used different metrics for errors, so we will convert them in order to compare the results.
+
+For the regression evaluation, we used RMSE, and for the arima evaluation we have used MSFE.
+
+Basically, RMSE is the square root of MSFT, so the modified table for best fit arima model `ARMA(2,3)` is:
+
+|    Metric                 |           ARMA(2,3)           |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -2542.072             | 
+| **BIC**                   |         -2512.500             | 
+| **RMSE (1-period-ahead)** |         0.0151360             |
+| **RMSE (5-period-ahead)** |         0.0148121             |
+
+Regression model `Google-Nasdaq` is better for each of the metric parameter.
+
+Therefore, **the Ultimate winner is regression model GOOGLE-Nasdaq!**
