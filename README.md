@@ -13,9 +13,19 @@ phases and several steps within each phase:
 
 Stocks which returns we're forecasting is [MSFT](https://finance.yahoo.com/quote/MSFT?p=MSFT&.tsrc=fin-srch). Explanatory
 variables (features) we're using are: [S&P500](https://finance.yahoo.com/quote/%5Egspc?ltr=1), [Nasdaq](https://finance.yahoo.com/quote/%5EIXIC/) 
-and copetitors like [AAPL](https://finance.yahoo.com/quote/AAPL/) and [GOOG](https://finance.yahoo.com/quote/GOOG?p=GOOG&.tsrc=fin-srch).
+and copetitors like [AAPL](https://finance.yahoo.com/quote/AAPL/), [GOOG](https://finance.yahoo.com/quote/GOOG?p=GOOG&.tsrc=fin-srch), [IBM](https://finance.yahoo.com/quote/IBM/) and [3M](https://finance.yahoo.com/quote/MMM?p=MMM&.tsrc=fin-srch).
 
 This repository represents group project work for course in `Statistics and Financial Data Analysis` for advanced degree [Masters in Computational Finance, Union University](http://mcf.raf.edu.rs/).
+
+### Project phases:
+
+Each of the project phases has detailed description of all the steps, implementation details, intuition for modeling, interpretation of data analysis, modeling, evaluation and statistical test that were performed. Here are the `links for published R notebooks to RPubs`:
+
+- [Data collection](https://rpubs.com/krivi95/783676)
+- [Data analysis](https://rpubs.com/krivi95/783678)
+- [Building univariate time series model for forecast](https://rpubs.com/krivi95/783506)
+- [Building multivariate model for forecast](https://rpubs.com/krivi95/783766)
+- [Building volatility model](https://rpubs.com/krivi95/783765)
 
 ## Running R markdown notebooks
 
