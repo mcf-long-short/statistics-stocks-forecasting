@@ -205,7 +205,7 @@ Looking at the Standardised Resituals Tests, we conclude the following:
   
   * There no evidence of correlation in our residuals and there's no dependence in conditional variance.
   
-  * The p-value for the LM Arch Test is 0.68 -there's no additional ARCH effect our model didn't captured.
+  * The p-value for the LM Arch Test is 0.68 - there's no additional ARCH effect our model didn't captured.
   
 ```{r echo=FALSE, warning=FALSE}
 GARCH_Model_skewed_student_t_1 = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'sstd')
@@ -289,19 +289,38 @@ AIC = c(-5.4527, -5.451191, -5.457355, -5.4386, -5.4493 , -5.450541, -5.4535)
 #which.min(model[,'AIC'])
 ```
 
+Let's take a closer look at the chosen model once again. 
 
+Even though this model had the lowest AIC, not all of it's parameters are significant. 
+Here we can see that alpha 2 is insignificant with p-value of 0.325.
 
+* Ljung-Box Test     R    Q(10)  14.93144  0.1345816  -   no correlation 
+* Ljung-Box Test     R    Q(15)  20.53265  0.1524374  -   no correlation   
+* Ljung-Box Test     R    Q(20)  22.63913  0.3068595  -   no correlation  
+ 
+* Ljung-Box Test     R^2  Q(10)  9.089257  0.5236542  -   no dependence in conditional variance
+* Ljung-Box Test     R^2  Q(15)  9.8791    0.8272751  -   no dependence in conditional variance 
+* Ljung-Box Test     R^2  Q(20)  11.83193  0.9217392  -   no dependence in conditional variance
 
-### Evaluate selected model
+* LM Arch Test tells us that there's no additional ARCH effect our model didn't captured.
+``` {r echo=FALSE, warning=FALSE}
+GARCH_Model_skewed_student_t_1 = garchFit(~arma(1, 1) + garch(2, 1), data = training_set, trace=F, cond.dist = 'sstd')
 
+summary(GARCH_Model_skewed_student_t_1)
+```
 By examining the statistics and QQ plot of our chosen model, we see that even though we used the model with skew-student distribution, we still don't have normal distribution the skewnees is still not zero.
+
+The experiment with Generalized Error Distribution didn't fix this issue. 
 ``` {r echo=FALSE, warning=FALSE}
 attilda <- residuals(GARCH_Model_skewed_student_t_1, standardize = T)
 basicStats(attilda)
-# plot(GARCH_Model_skewed_student_t_1, which=13)
+plot(GARCH_Model_skewed_student_t_1, which=13)
 ```
 
-We first do a forecast using the selected model, we use rolling forecast method and predict entire out-of-sample set.
+### Evaluate selected model
+
+
+We first do a one-period-ahead forecast using the selected model, here we use rolling forecast method.
 ``` {r echo=FALSE, warning=FALSE}
 fitted_model <- ugarchfit(GARCH_Model_skewed_student_t_spec, 
                           data = na.omit(original_set),
@@ -335,8 +354,8 @@ egarch_fitl<- ugarchfit(EGARCH_Model_spec,
                         out.sample = 110)
 
 egarch_forecast <- ugarchforecast(egarch_fitl, 
-                            n.ahead = 1, 
-                            n.roll = 110)
+                                  n.ahead = 1, 
+                                  n.roll = 110)
 
 predictions_egarch <- egarch_forecast@forecast$sigmaFor
 target_values <- egarch_forecast@forecast$seriesFor
