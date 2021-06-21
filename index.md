@@ -34,6 +34,6 @@ Each of the project phases has detailed description of all the steps, implementa
 - [Data collection](https://rpubs.com/krivi95/783676)
 - [Data analysis](https://rpubs.com/krivi95/783678)
 - [Building univariate time series model for forecast](https://rpubs.com/krivi95/783506)
-- Building multivariate model for forecast
-- Building volatility model
+- [Building multivariate model for forecast](https://rpubs.com/krivi95/783766)
+- [Building volatility model](https://rpubs.com/krivi95/783765)
 
