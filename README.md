@@ -1,5 +1,7 @@
 # Stock returns forecasting
 
+Docs: https://mcf-long-short.github.io/statistics-stocks-forecasting/
+
 ## Introduction
 
 The goal of the project is to perform all steps/elements of the empirical analysis with
