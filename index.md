@@ -1,37 +1,39 @@
-## Welcome to GitHub Pages
+## Statistics and Financial Data Analysis
 
-You can use the [editor on GitHub](https://github.com/mcf-long-short/statistics-stocks-forecasting/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+### Introduction
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+This document represents group project work for course in `Statistics and Financial Data Analysis` for advanced degree [Masters in Computational Finance, Union University](http://mcf.raf.edu.rs/).
 
-### Markdown
+Professor:
+[Prof. Milan Nedeljkovic, PhD](https://www.fefa.edu.rs/profesori/Milan-Nedeljkovic/)
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+Students:
+- Nikola Krivacevic
+- Aleksandar Milinkovic
+- Milos Milunovic
 
-```markdown
-Syntax highlighted code block
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/30963594/122693716-4a83ff00-d23b-11eb-999f-b222d8a18f02.png" />
+</p>
 
-# Header 1
-## Header 2
-### Header 3
 
-- Bulleted
-- List
+### MSFT stock returns forecasting
 
-1. Numbered
-2. List
 
-**Bold** and _Italic_ and `Code` text
+The goal of the project is to perform all steps/elements of the empirical analysis with financial/economic data, with the goal to produce useful forecasts. The project is organized in several phases and multiple steps within each phase.
 
-[Link](url) and ![Image](src)
-```
+The whole data analysis, visualization, statistical tests, forecasting and valuation done in [R programming language](https://www.r-project.org/). [Project code](https://github.com/mcf-long-short) is organized across multiple directories, in [R Notebooks](https://rmarkdown.rstudio.com/lesson-10.html). One convenient thing with R notebooks is that you can generate various output formats, html including, which can be deployed to the [RPubs](https://rpubs.com/) from RStudio.
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+All the notebooks, used in the project, are organized according to the several phases for forecasting and  are deployed to the RPubs.
 
-### Jekyll Themes
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/mcf-long-short/statistics-stocks-forecasting/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+### Project phases:
 
-### Support or Contact
+Each of the project phases has detailed description of all the steps, implementation details, intuition for modeling, interpretation of data analysis, modeling, evaluation and statistical test that were performed. 
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+- [Data collection](https://rpubs.com/krivi95/783676)
+- [Data analysis](https://rpubs.com/krivi95/783678)
+- [Building univariate time series model for forecast](https://rpubs.com/krivi95/783506)
+- Building multivariate model for forecast
+- Building volatility model
+
