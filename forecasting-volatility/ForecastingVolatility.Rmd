@@ -1,6 +1,9 @@
 ---
 title: "Forecasting - Volatility"
-output: html_document
+output:   
+  html_document:
+    includes:
+      after_body: ../docs/footer.html
 ---
 
 ```{r setup, include=FALSE, echo=FALSE, warning=FALSE}

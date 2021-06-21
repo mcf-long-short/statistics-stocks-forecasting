@@ -118,6 +118,6 @@ get_and_process_ticker_data("IBM", start_date, end_date, "../data/IBM.csv")
 
 ### 3M data
 ```{r echo=FALSE, warning=FALSE}
-get_and_process_ticker_data("MMM", start_date, end_date, "../data/IBM.csv")
+get_and_process_ticker_data("MMM", start_date, end_date, "../data/MMM.csv")
 ```
 

@@ -1,7 +1,9 @@
 ---
 title: "Forecasting multivariate time series models (regression models)"
-output:
-  html_document: default
+output:  
+  html_document:
+    includes:
+      after_body: ../docs/footer.html
 ---
 
 ```{r setup, include=FALSE}
