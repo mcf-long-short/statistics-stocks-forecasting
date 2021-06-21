@@ -1,10 +1,1177 @@
 ---
-title: "Forecasting - Regression"
-output: html_document
+title: "Forecasting multivariate time series models (regression models)"
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Forecasting with regression
+
+```{r echo=FALSE, warning=FALSE}
+# Importing libraries
+suppressMessages(library(quantmod))
+suppressMessages(library(forecast))
+suppressMessages(library(tseries))
+```
+
+```{r echo=FALSE}
+training_dataset_range <- '2019::2020'
+test_dataset_range <- '2021::'
+```
+
+## Introduction
+
+The goal of this phase is to produce the best `multivariate regression model` 
+for forecasting the return on our stock of choice - Microsoft. For that we will
+use family of Linear regression models to find the best performing model.
+
+
+The dependent variable in our regression model will be daily returns of Microsoft.
+The chosen explanatory (independent) variables are also stocks (potential competitors) and stock market stock indexes.
+
+Potential regressors in our regression models are:
+
+- Apple (AAPL)
+- Google (GOOG)
+- IBM (IBM)
+- 3M (MMM)
+- S&P500 (^GSPC)
+- Nasdaq (^IXIC)
+
+
+## Splitting the dataset ("in-sample and" "out-of-sample")
+
+The dataset splitting for dependent variable (Microsoft daily returns) has been done in the previous phase.
+
+The training data set will contain daily return data from 2019. and 2020. and the test data will only contain first six months of 2021.
+
+
+```{r, echo=FALSE}
+MSFT <- read.csv(file = "../data/MSFT.csv", row.names = 1, header = TRUE)
+MSFT_xts <- xts(MSFT[, 1:5], order.by=as.POSIXct(MSFT$date))
+MSFT_xts.retDaily <- periodReturn(MSFT_xts, period = "daily")
+
+MSFT_daily_ret_original <- ts(as.numeric(MSFT_xts.retDaily))
+MSFT_daily_ret_training <- ts(as.numeric(MSFT_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+MSFT_daily_ret_test <- ts(as.numeric(MSFT_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+
+```
+
+In order to split the dataset for potential regressors, we first need to check the stationarity properties of these time series, which is described in the next section.
+
+
+## Stationarity property of explanatory variables
+
+In this section, we will check the stationarity property of each time series.
+That means, it needs to be determined that the time series is constant in mean and variance are constant and not dependent on time.
+
+We will look at couple of methods for checking stationarity:
+
+- Autocorrelation Function (ACF) - Identifying if correlation at different time lags goes to 0
+- Augmented Dickey–Fuller (ADF) t-statistic test for unit root
+- Kwiatkowski-Phillips-Schmidt-Shin (KPSS) for level or trend stationarity
+
+### Apple (AAPL)
+
+#### Stock prices
+
+
+Let's see the graph of Apple closing prices for the past two and a half years:
+```{r, echo=FALSE}
+AAPL <- read.csv(file = "../data/AAPL.csv", row.names = 1, header = TRUE)
+AAPL_xts <- xts(AAPL[, 1:5], order.by=as.POSIXct(AAPL$date))
+
+chartSeries(AAPL_xts$AAPL.Close, theme = "white", up.col="blue", name = "AAPL - Closing prices")
+
+# Converting to ts object
+AAPL_prices <- ts(as.numeric(AAPL_xts$AAPL.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(AAPL_prices, lag.max = length(AAPL_prices), main="AAPL Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Another test we can conduct is the Augmented Dickey–Fuller (ADF) t-statistic test to find if the series has a unit root (a series with a trend line will have a unit root and result in a large p-value).
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(AAPL_prices)
+```
+
+The significance level (p-value) for ADF test is pretty high (almost 50%), so we cannot reject the null hypothesis.
+
+
+Now, we can test if the time series is level or trend stationary using the Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test. Here we will test the null hypothesis of trend stationarity (a low p-value will indicate a signal that is not trend stationary, has a unit root).
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(AAPL_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+The stock prices time series is definitely not stationary, therefore we need to introduce some kind of modification.
+One of the methods is to use differentiation of stock price i.e. calculate daily returns.
+
+
+Let's see the graph of Apple daily returns for the past two and a half years:
+```{r, echo=FALSE}
+AAPL_xts.retDaily <- periodReturn(AAPL_xts, period = "daily")
+chartSeries(AAPL_xts.retDaily, theme = "white", up.col="blue", name = "AAPL - Daily returns")
+
+AAPL_retDaily <-ts(as.numeric(AAPL_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(AAPL_retDaily, lag.max = length(AAPL_retDaily), main="AAPL Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(AAPL_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(AAPL_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+AAPL_daily_ret_training <- ts(as.numeric(AAPL_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+AAPL_daily_ret_test <- ts(as.numeric(AAPL_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+**== NOTE ==**
+
+**We will repeat the same steps for all explanatory variables.**
+
+### Google (GOOG)
+
+#### Stock prices
+
+
+Let's see the graph of Google closing prices for the past two and a half years:
+```{r, echo=FALSE}
+GOOG <- read.csv(file = "../data/GOOG.csv", row.names = 1, header = TRUE)
+GOOG_xts <- xts(GOOG[, 1:5], order.by=as.POSIXct(GOOG$date))
+
+chartSeries(GOOG_xts$GOOG.Close, theme = "white", up.col="blue", name = "GOOG - Closing prices")
+
+# Converting to ts object
+GOOG_prices <- ts(as.numeric(GOOG_xts$GOOG.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(GOOG_prices, lag.max = length(GOOG_prices), main="GOOG Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performing ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(GOOG_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 96%), so we cannot reject the null hypothesis.
+
+
+Performing KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(GOOG_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of Google daily returns for the past two and a half years:
+```{r, echo=FALSE}
+GOOG_xts.retDaily <- periodReturn(GOOG_xts, period = "daily")
+chartSeries(GOOG_xts.retDaily, theme = "white", up.col="blue", name = "GOOG - Daily returns")
+
+GOOG_retDaily <-ts(as.numeric(GOOG_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(GOOG_retDaily, lag.max = length(GOOG_retDaily), main="GOOG Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(GOOG_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(GOOG_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+GOOG_daily_ret_training <- ts(as.numeric(GOOG_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+GOOG_daily_ret_test <- ts(as.numeric(GOOG_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+### IBM (IBM)
+
+#### Stock prices
+
+
+Let's see the graph of IBM closing prices for the past two and a half years:
+```{r, echo=FALSE}
+IBM <- read.csv(file = "../data/IBM.csv", row.names = 1, header = TRUE)
+IBM_xts <- xts(IBM[, 1:5], order.by=as.POSIXct(IBM$date))
+
+chartSeries(IBM_xts$IBM.Close, theme = "white", up.col="blue", name = "IBM - Closing prices")
+
+# Converting to ts object
+IBM_prices <- ts(as.numeric(IBM_xts$IBM.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of seasonality.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(IBM_prices, lag.max = length(IBM_prices), main="IBM Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performing ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(IBM_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 22%), so we cannot reject the null hypothesis.
+
+
+Performing KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(IBM_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of IBM daily returns for the past two and a half years:
+```{r, echo=FALSE}
+IBM_xts.retDaily <- periodReturn(IBM_xts, period = "daily")
+chartSeries(IBM_xts.retDaily, theme = "white", up.col="blue", name = "IBM - Daily returns")
+
+IBM_retDaily <-ts(as.numeric(IBM_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(IBM_retDaily, lag.max = length(IBM_retDaily), main="IBM Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(IBM_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(IBM_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+IBM_daily_ret_training <- ts(as.numeric(IBM_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+IBM_daily_ret_test <- ts(as.numeric(IBM_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+
+### 3M (MMM)
+
+#### Stock prices
+
+
+Let's see the graph of 3M closing prices for the past two and a half years:
+```{r, echo=FALSE}
+MMM <- read.csv(file = "../data/MMM.csv", row.names = 1, header = TRUE)
+MMM_xts <- xts(MMM[, 1:5], order.by=as.POSIXct(MMM$date))
+
+chartSeries(MMM_xts$MMM.Close, theme = "white", up.col="blue", name = "MMM - Closing prices")
+
+# Converting to ts object
+MMM_prices <- ts(as.numeric(MMM_xts$MMM.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(MMM_prices, lag.max = length(MMM_prices), main="MMM Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performing ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(MMM_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 79%), so we cannot reject the null hypothesis.
+
+
+Performing KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(MMM_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of 3M daily returns for the past two and a half years:
+```{r, echo=FALSE}
+MMM_xts.retDaily <- periodReturn(MMM_xts, period = "daily")
+chartSeries(MMM_xts.retDaily, theme = "white", up.col="blue", name = "MMM - Daily returns")
+
+MMM_retDaily <-ts(as.numeric(MMM_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(MMM_retDaily, lag.max = length(MMM_retDaily), main="MMM Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(MMM_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(MMM_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+MMM_daily_ret_training <- ts(as.numeric(MMM_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+MMM_daily_ret_test <- ts(as.numeric(MMM_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+### S&p500 (^GSPC)
+
+#### Stock prices
+
+
+Let's see the graph of S&p500 closing prices for the past two and a half years:
+```{r, echo=FALSE}
+SP500 <- read.csv(file = "../data/S&P500.csv", row.names = 1, header = TRUE)
+SP500_xts <- xts(SP500[, 1:5], order.by=as.POSIXct(SP500$date))
+
+chartSeries(SP500_xts$GSPC.Close, theme = "white", up.col="blue", name = "SP500 - Closing prices")
+
+# Converting to ts object
+SP500_prices <- ts(as.numeric(SP500_xts$GSPC.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(SP500_prices, lag.max = length(SP500_prices), main="SP500 Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performing ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(SP500_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 66%), so we cannot reject the null hypothesis.
+
+
+Performing KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(SP500_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of S&p500 daily returns for the past two and a half years:
+```{r, echo=FALSE}
+SP500_xts.retDaily <- periodReturn(SP500_xts, period = "daily")
+chartSeries(SP500_xts.retDaily, theme = "white", up.col="blue", name = "SP500 - Daily returns")
+
+SP500_retDaily <-ts(as.numeric(SP500_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(SP500_retDaily, lag.max = length(SP500_retDaily), main="SP500 Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(SP500_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(SP500_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+SP500_daily_ret_training <- ts(as.numeric(SP500_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+SP500_daily_ret_test <- ts(as.numeric(SP500_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+
+### Nasdaq (^IXIC)
+
+#### Stock prices
+
+
+Let's see the graph of Nasdaq closing prices for the past two and a half years:
+```{r, echo=FALSE}
+Nasdaq <- read.csv(file = "../data/Nasdaq.csv", row.names = 1, header = TRUE)
+Nasdaq_xts <- xts(Nasdaq[, 1:5], order.by=as.POSIXct(Nasdaq$date))
+
+chartSeries(Nasdaq_xts$IXIC.Close, theme = "white", up.col="blue", name = "Nasdaq - Closing prices")
+
+# Converting to ts object
+Nasdaq_prices <- ts(as.numeric(Nasdaq_xts$IXIC.Close))
+```
+
+
+It looks like this time series is not stationary, as we can see some shape of upward trend.
+
+Now, we need to perform methods described in the introduction to conclude if the time series is stationary or not.
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(Nasdaq_prices, lag.max = length(Nasdaq_prices), main="Nasdaq Closing Price Autocorrelation Function (ACF)")
+```
+
+From the plot above, we can conclude that almost all lags are exceeding the confidence interval of the ACF.
+
+
+Performing ADF test:
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(Nasdaq_prices)
+```
+
+The significance level (p-value) for ADF test is really high (around 57%), so we cannot reject the null hypothesis.
+
+
+Performing KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(Nasdaq_prices, null="Trend")
+```
+
+The significance level (p-value) for KPSS test is really low (below 1%), so we are rejecting the null hypothesis, which means that this time series has a unit root.
+
+
+
+#### Calculating daily returns
+
+Let's see the graph of Nasdaq daily returns for the past two and a half years:
+```{r, echo=FALSE}
+Nasdaq_xts.retDaily <- periodReturn(Nasdaq_xts, period = "daily")
+chartSeries(Nasdaq_xts.retDaily, theme = "white", up.col="blue", name = "Nasdaq - Daily returns")
+
+Nasdaq_retDaily <-ts(as.numeric(Nasdaq_xts.retDaily))
+```
+
+Well, now it looks different and more promising now. It looks this time series is stationary.
+
+Let's prove it.
+
+```{r, warning=FALSE, echo=FALSE}
+# ACF
+acf(Nasdaq_retDaily, lag.max = length(Nasdaq_retDaily), main="Nasdaq Daily return Autocorrelation Function (ACF)")
+```
+
+Now we can see that only few lags that exceed the confidence interval of the ACF (blue dashed line).
+
+Performing ADF test:
+
+```{r, warning=FALSE, echo=FALSE}
+# ADF test - closing price
+adf.test(Nasdaq_retDaily)
+```
+
+The significance level (p-value) is around 1%, so we can reject the null hypothesis (no presence of unit root).
+
+
+And finally, KPSS test:
+```{r, warning=FALSE, echo=FALSE}
+# KPSS test - closing price
+kpss.test(Nasdaq_retDaily, null="Trend")
+
+```
+
+The significance level (p-value) for KPSS test is more than 10%, so we are cannot reject the null hypothesis, which means that we cannot prove there is a unit root.
+
+
+``` {r, echo=FALSE}
+# Splitting the dataset
+Nasdaq_daily_ret_training <- ts(as.numeric(Nasdaq_xts.retDaily[training_dataset_range]), frequency = 252, start=c(2019, 1))
+Nasdaq_daily_ret_test <- ts(as.numeric(Nasdaq_xts.retDaily[test_dataset_range]), frequency = 252, start=c(2021, 1))
+```
+
+
+## Choosing appropriate regression model
+
+Before we choose appropriate regression model, let's first say couple of words about linear regression itself and the metrics that will be used.
+
+
+A linear regression is a statistical model that analyzes the relationship between a response/dependent variable and one or more variables and their interactions (explanatory/independent variables).
+
+
+The most common evaluation metrics in regression model are:
+
+- **R-squared (R2)**, which is the proportion of variation in the outcome that is explained by the predictor variables. In multiple regression models, R2 corresponds to the squared correlation between the observed outcome values and the predicted values by the model. The Higher the R-squared, the better the model.
+- **Root Mean Squared Error (RMSE)**, which measures the average error performed by the model in predicting the outcome for an observation. Mathematically, the RMSE is the square root of the mean squared error (MSE), which is the average squared difference between the observed actual outome values and the values predicted by the model. The lower the RMSE, the better the model.
+- **Residual Standard Error (RSE)**, also known as the model sigma, is the average amount that the response will deviate from the true regression line. The lower the RSE, the better the model. In practice, the difference between RMSE and RSE is very small, particularly for large multivariate data.
+
+
+The problem with the above metrics, is that they are sensible to the inclusion of additional variables in the model, even if those variables don't have significant contribution in explaining the outcome. This means that including additional variables in the model will always increase the R2 and reduce the RMSE. Therefore, we need to introduce more robust metric in order to make proper choice.
+
+Regarding R2, there is an adjusted version, called Adjusted R-squared, which adjusts the R2 for having too many variables in the model.
+
+
+Additionally, there are two other important metrics that are commonly used for model evaluation and selection:
+
+
+- **AIC** - The basic idea of AIC is to penalize the inclusion of additional variables to a model. It adds a penalty that increases the error when including additional terms. The lower the AIC, the better the model.
+- **BIC** - This is a variant of AIC with a stronger penalty for including additional variables to the model.
+
+In the next section, we will use **Adjusted R2**, **AIC** and **BIC** for comparing models.
+
+Whole dataset (for each stock/index we picked) is divided into two subsets:
+
+- Training (in-sample)
+- Testing (out-of-sample)
+
+We will choose the appropriate regression model on the in-sample dataset.
+
+### Regression model with all explanatory variables
+
+The first linear model that we will try out is using all explanatory variables that we listed in the introduction section.
+
+Let's see the metrics from evaluated model:
+
+```{r, echo=FALSE}
+model_all <- lm(MSFT_daily_ret_training ~
+                  AAPL_daily_ret_training
+                + GOOG_daily_ret_training
+                + IBM_daily_ret_training
+                + MMM_daily_ret_training
+                + SP500_daily_ret_training
+                + Nasdaq_daily_ret_training)
+summary(model_all)
+
+cat(paste("AIC: ",toString(round(AIC(model_all), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_all), digits = 3))))
+```
+
+From the results above, we can see that only two variables are statistically significant (p-value lower than 5%): `3M` and `Nasdaq` daily returns.
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.8%), which means high "goodness of fit".
+
+
+Residual Standard Error (also considered as measure of the quality of a linear regression fit) is really low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+### Regression model with market stock indexes as explanatory variables
+
+Let's now include only `S&P500` and `Nasdaq` daily returns.
+
+```{r, echo=FALSE}
+model_indexes <- lm(MSFT_daily_ret_training ~
+                      SP500_daily_ret_training
+                    + Nasdaq_daily_ret_training)
+summary(model_indexes)
+
+cat(paste("AIC: ",toString(round(AIC(model_indexes), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_indexes), digits = 3))))
+```
+
+From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%).
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.2%), which means high "goodness of fit".
+
+
+Residual Standard Error is really low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+### Regression model with competitors as explanatory variables
+
+Only competitor companies (daily returns) are now explanatory variables:
+
+```{r, echo=FALSE}
+model_competition <- lm(MSFT_daily_ret_training ~
+                        AAPL_daily_ret_training
+                      + GOOG_daily_ret_training
+                      + IBM_daily_ret_training
+                      + MMM_daily_ret_training)
+summary(model_competition)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition), digits = 3))))
+```
+
+Quite interesting results. Now, all coefficients are statistically significant except `3M` (p-value is around 9%).
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is lower than in the previous modes (75.3%), which mean it fits little bit worse, but is is still good results though.
+
+
+Residual Standard Error is higher than in the previous models.
+
+
+We can also see that both AIC and BIC are low (negative), but they are higher than in the previous models.
+
+
+### Regression model with competitors and Nasdaq index as explanatory variables
+
+Let's see what happens if we add `Nasdaq` index to the previous model as explanatory variable:
+
+```{r, echo=FALSE}
+model_competition_nasdaq <- lm(MSFT_daily_ret_training ~
+                                AAPL_daily_ret_training
+                                + GOOG_daily_ret_training
+                                + IBM_daily_ret_training
+                                + MMM_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_competition_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition_nasdaq), digits = 3))))
+```
+
+Well, this model is similar to the first model (where we included all explanatory variables).
+
+
+We can see that only two variables are statistically significant (p-value lower than 5%): `3M` and `Nasdaq` daily returns.
+
+
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+All other metrics (Adjusted R-squared, RSE, AIC, BIC) are the same (or really close).
+
+
+This model is the candidate for the winner.
+
+### Regression model with competitors and S&P500 index as explanatory variables
+
+Let's try something similar. Instead of `Nasdaq`, let's include `S&P500` index.
+
+```{r, echo=FALSE}
+model_competition_sp500 <-  lm(MSFT_daily_ret_training ~
+                                AAPL_daily_ret_training
+                                + GOOG_daily_ret_training
+                                + IBM_daily_ret_training
+                                + MMM_daily_ret_training
+                                + SP500_daily_ret_training)
+summary(model_competition_sp500)
+
+cat(paste("AIC: ",toString(round(AIC(model_competition_sp500), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_competition_sp500), digits = 3))))
+```
+
+From the results above, we can conclude that all coefficients are statistically significant (p-value lower than 5%), except `IBM` which is slightly above 5%, but we cannot reject the null hypothesis i.e. we cannot guarantee that this coefficient is not zero.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (81.6%), which means high "goodness of fit". However, it is lower than the candidate for the winner.
+
+
+Residual Standard Error is low.
+
+
+We can also see that both AIC and BIC are really low (negative), but these values will be used for comparing with other models.
+
+
+This model is the good candidate for evaluating the forecast performance which will be described in the next section.
+
+
+### Regression model with Google and Nasdaq index as explanatory variables
+
+In the previous models, we saw that `3M` and `Nasdaq` show best results for linear regression.
+Let's try `Google` and `Nasdaq`:
+```{r, echo=FALSE}
+model_google_nasdaq <-      lm(MSFT_daily_ret_training ~
+                                  GOOG_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_google_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_google_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_google_nasdaq), digits = 3))))
+```
+
+From the results above, we can see that both coefficients are statistically significant (p-value lower than 5%). `Google` is slightly under 5%.
+
+
+We can reject the null hypothesis and state that these two coefficients are not 0.
+
+
+The F-statistics shows high value with zero p-value, which is another proof that there are some coefficients that are not equal to 0.
+
+
+Ajdusted R-squared is quite high (85.1%), which means high "goodness of fit".
+
+
+Residual Standard Error is really low.
+
+
+We can also see that both AIC and BIC are really low (negative).
+
+
+### Regression model with 3M and Nasdaq index as explanatory variables
+
+
+From the previous evaluation models, we have seen that `3M` and `Nasdaq` gave best results.
+However, they were combined with other explanatory variables.
+
+Let's have a look when we include only these two explanatory variables:
+
+```{r, echo=FALSE}
+model_3m_nasdaq <-      lm(MSFT_daily_ret_training ~
+                                  MMM_daily_ret_training
+                                + Nasdaq_daily_ret_training)
+summary(model_3m_nasdaq)
+
+cat(paste("AIC: ",toString(round(AIC(model_3m_nasdaq), digits = 3))))
+cat('\n')
+cat(paste("BIC: ",toString(round(BIC(model_3m_nasdaq), digits = 3))))
+```
+
+It was expected. We definitely have a winner! All metrics are show that this model gives the best results.
+
+Both coefficients are statistically significant and have p-value close to 0.
+
+RSE is also really low (0.008).
+
+Both AIC and BIC are lowest among all models.
+
+
+## Evaluating forecast performance
+
+In this section, we will evaluate the forecast performance for the three models from previous section.
+
+The models that are competing are:
+
+- `3M` and `Nasdaq`
+- `S&P 500` and `Nasdaq`
+- `GOOGLE` and `Nasdaq`
+
+As it was mentioned in the arima forecasting section, forecast performance is evaluated over the entire `testing data set`. We will
+use `rolling scheme` to produce the forecasts. Models will be evaluated
+in terms of the `one-period-ahead forecast` and forecast at horizon of 
+`five-periods-ahead` (one trading week).
+
+```{r, echo=FALSE}
+# Function for one-period forecast
+predict.1 <- function(f, df, M)
+{
+  P <- nrow(df) - M
+  results <- rep(0, P)
+
+  for (i in 1:P) {
+    df.pred <- df[M+i,]
+    df.est <- df[1:(M+i-1),]
+    results[i] <- predict(lm(f, data=df.est), newdata=df.pred)
+  }
+  results
+}
+
+```
+
+```{r, echo=FALSE}
+# Function for multi-period forecast
+predict.n <- function(f, df, M, n)
+{
+  P <- nrow(df) - M
+  results <- rep(0, P)
+
+  for (i in 1:(P/n)) {
+    df.pred <- df[(M+((i-1)*n)+1):(M+((i-1)*n)+n),]
+    df.est <- df[1:(M+(i-1)*n),]
+    for (j in 1:n) {
+      results[(i-1)*n+j] <- predict(lm(f, data=df.est), newdata=df.pred)[j]
+    }
+  }
+  results
+}
+```
+
+
+```{r, echo=FALSE}
+training_dataset_length <- length(MSFT_daily_ret_training)
+test_dataset_length <- length(MSFT_daily_ret_test)
+```
+
+### One-period-ahead forecast
+
+#### Best fit model - 3M and Nasdaq
+```{r, echo=FALSE}
+# Winning model data transformation
+model_winner = MSFT_daily_ret_original~MMM_retDaily+Nasdaq_retDaily
+df_winner = as.data.frame(cbind(MSFT_daily_ret_original, MMM_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred_vals_1_winner <- predict.1(model_winner, df_winner, training_dataset_length)
+errors_1_winner <- pred_vals_1_winner - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred_vals_1_winner, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Runner up model - Nasdaq and S&P 500
+```{r, echo=FALSE}
+# Runner-up model data transformation
+model_runner_up = MSFT_daily_ret_original~SP500_retDaily+Nasdaq_retDaily
+df_runner_up = as.data.frame(cbind(MSFT_daily_ret_original, SP500_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.1.runner_up <- predict.1(model_runner_up, df_runner_up, training_dataset_length)
+errors_1_runner_up <- pred.vals.1.runner_up - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.1.runner_up, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Third model - Google and Nasdaq
+```{r, echo=FALSE}
+# Third model data transformation
+model_third = MSFT_daily_ret_original~GOOG_retDaily+Nasdaq_retDaily
+df_third = as.data.frame(cbind(MSFT_daily_ret_original, GOOG_retDaily, Nasdaq_retDaily))
+```
+
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
+errors_1_third <- pred.vals.1.third - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.1.third, as.numeric(MSFT_daily_ret_test))
+```
+
+
+```{r, echo=FALSE}
+plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="One-period-ahead forecasts", xlab="Days ahead", ylab="Returns")
+lines(pred_vals_1_winner, type="l", pch=22, lty=2, col="red")
+#lines(pred.vals.1.runner_up, type="l", pch=22, lty=2, col="green")
+#lines(pred.vals.1.third, type="l", pch=22, lty=2, col="blue")
+
+#legend( 
+#  "topright", inset=c(-0.06, 0), text.col=c("black", "red","green", "blue"), 
+#  legend=c("Test sample","3M-Nasdaq","S&P500-Nasdaq","GOOGLE-Nasdaq")
+#)
+```
+
+Based on the results above, we can see that we now have the reverse order of best matching models.
+
+The RMSE (Root Mean Squared Error) is lowest for the third regression model.
+
+It is still tight race, but for the one-period-ahead forecast, the winner is the third model which has `GOOGLE` and `Nasdaq` as explanatory variables in regression model.
+
+
+Besides RMSE for comparing two models, we will use `DM (Diebold-Mariano) test`.
+It checks whether the forecast error is significant or simply due to the specific
+choice of data in our sample.
+
+Let's compare new favorite model with two others:
+
+`Comparison GOOGLE-Nasdaq and SP500-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_1_third, errors_1_runner_up, "less", h=1)
+```
+
+`Comparison GOOGLE-Nasdaq and 3M-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_1_third, errors_1_winner, "less", h=1)
+```
+
+Based on the results above, and the p-values (below 5%), we can state that we have a winner for one-period-ahead forecast and that is the third model from previous section (`GOOGLE-Nasdaq` regression model).
+
+
+### Multi-period-ahead forecast
+
+#### Best fit model - 3M and Nasdaq
+
+```{r, echo=FALSE}
+# Forecasting
+pred_vals_5_winner <- predict.n(model_winner, df_winner, training_dataset_length, 5)
+errors_5_winner <- pred_vals_5_winner - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred_vals_5_winner, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Runner up model - Nasdaq and S&P 500
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.5.runner_up <- predict.n(model_runner_up, df_runner_up, training_dataset_length, 5)
+errors_5_runner_up <- pred.vals.5.runner_up - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.5.runner_up, as.numeric(MSFT_daily_ret_test))
+```
+
+#### Third model - Google and Nasdaq
+```{r, echo=FALSE}
+# Forecasting
+pred.vals.5.third <- predict.n(model_third, df_third, training_dataset_length, 5)
+errors_5_third <- pred.vals.5.third - as.numeric(MSFT_daily_ret_test)
+```
+
+```{r, echo=FALSE}
+# Calling accuracy function from forecast lib
+accuracy(pred.vals.5.third, as.numeric(MSFT_daily_ret_test))
+```
+
+```{r, echo=FALSE}
+plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="Multi-period-ahead forecasts", xlab="Days ahead", ylab="Returns")
+lines(pred_vals_5_winner, type="l", pch=22, lty=2, col="red")
+#lines(pred.vals.5.runner_up, type="l", pch=22, lty=2, col="green")
+#lines(pred.vals.5.third, type="l", pch=22, lty=2, col="blue")
+
+#legend( 
+#  "topright", inset=c(-0.06, 0), text.col=c("black", "red","green", "blue"), 
+#  legend=c("Test sample","3M-Nasdaq","S&P500-Nasdaq","GOOGLE-Nasdaq")
+#)
+```
+
+Based on the results above, we can see that we now have the reverse order of best matching models again.
+
+The RMSE (Root Mean Squared Error) is lowest for the third regression model.
+
+The metric values are pretty much the same like in one-period-ahead forecast.
+
+But let's do the `Diebold-Mariano` tests again.
+
+Let's compare new favorite model with two others:
+
+`Comparison GOOGLE-Nasdaq and SP500-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_5_third, errors_5_runner_up, "less", h=5)
+```
+
+`Comparison GOOGLE-Nasdaq and 3M-Nasdaq`
+```{r echo=FALSE}
+dm.test(errors_5_third, errors_5_winner, "less", h=5)
+```
+
+Based on the results above, and the p-values (below 5%), we can state that we have a winner for one-period-ahead forecast and that is the third model from previous section (`GOOGLE-Nasdaq` regression model).
+
+## Model comparison
+
+After evaluating forecast performance in the previous section, and after we performed the tests, we can conclude that regression mode that has `GOOGLE` and `Nasdaq` as explanatory is the best fit.
+
+Here is the brief overview of the key metrics for that model: 
+
+|    Metric                 |       Google - Nasdaq         |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -3401.212             |
+| **BIC**                   |         -3384.313             |
+| **RMSE (1-period-ahead)** |         0.009104144           |
+| **RMSE (5-period-ahead)** |         0.009110567           |
+
+
+Now it is time to compare the results from Phase 2 - Forecasting ARIMA.
+
+The model that proved to be the best fit, in all of the phases, in all the tests
+and for all used metrics was the `ARMA(2,3)`.
+
+We used different metrics for errors, so we will convert them in order to compare the results.
+
+For the regression evaluation, we used RMSE, and for the arima evaluation we have used MSFE.
+
+Basically, RMSE is the square root of MSFT, so the modified table for best fit arima model `ARMA(2,3)` is:
+
+|    Metric                 |           ARMA(2,3)           |
+|---------------------------|:-----------------------------:|
+| **AIC**                   |         -2542.072             | 
+| **BIC**                   |         -2512.500             | 
+| **RMSE (1-period-ahead)** |         0.0151360             |
+| **RMSE (5-period-ahead)** |         0.0148121             |
+
+Regression model `Google-Nasdaq` is better for each of the metric parameter.
+
+Therefore, **the Ultimate winner is regression model GOOGLE-Nasdaq!**

@@ -33,6 +33,7 @@ initial data analysis) are:
 - AAPL
 - GOOG
 - IBM
+- 3M
 
 For data collection process we're using 
 [quantmod library](https://cran.r-project.org/web/packages/quantmod/quantmod.pdf).
@@ -113,5 +114,10 @@ get_and_process_ticker_data("GOOG", start_date, end_date, "../data/GOOG.csv")
 ### IBM data
 ```{r echo=FALSE, warning=FALSE}
 get_and_process_ticker_data("IBM", start_date, end_date, "../data/IBM.csv")
+```
+
+### 3M data
+```{r echo=FALSE, warning=FALSE}
+get_and_process_ticker_data("MMM", start_date, end_date, "../data/IBM.csv")
 ```
 
