@@ -1077,8 +1077,8 @@ df_winner = as.data.frame(cbind(MSFT_daily_ret_original,AAPL_retDaily, GOOG_retD
 pred_vals_1_winner <- predict.1(model_winner, df_winner, training_dataset_length)
 errors_1_winner <- pred_vals_1_winner - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="One-period-ahead forecast - Competitors + S&P500", xlab="Days ahead", ylab="Returns")
-lines(pred_vals_1_winner, type="l", pch=22, lty=2, col="red")
+plot(pred_vals_1_winner, type="l",col="black", main="One-period-ahead forecast - Competitors + S&P500", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
@@ -1099,8 +1099,8 @@ df_runner_up = as.data.frame(cbind(MSFT_daily_ret_original, IBM_retDaily, GOOG_r
 pred.vals.1.runner_up <- predict.1(model_runner_up, df_runner_up, training_dataset_length)
 errors_1_runner_up <- pred.vals.1.runner_up - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="One-period-ahead forecast - IBM & Google", xlab="Days ahead", ylab="Returns")
-lines(pred.vals.1.runner_up, type="l", pch=22, lty=2, col="red")
+plot(pred.vals.1.runner_up, type="l",col="black", main="One-period-ahead forecast - IBM & Google", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
@@ -1120,8 +1120,8 @@ df_third = as.data.frame(cbind(MSFT_daily_ret_original, GOOG_retDaily, MMM_retDa
 pred.vals.1.third <- predict.1(model_third, df_third, training_dataset_length)
 errors_1_third <- pred.vals.1.third - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="One-period-ahead forecast - Google & 3M", xlab="Days ahead", ylab="Returns")
-lines(pred.vals.1.third, type="l", pch=22, lty=2, col="red")
+plot(pred.vals.1.third, type="l",col="black", main="One-period-ahead forecast - Google & 3M", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
@@ -1164,8 +1164,8 @@ However, we will still keep `Competitors and SP500` as favorite one because of t
 pred_vals_5_winner <- predict.n(model_winner, df_winner, training_dataset_length, 5)
 errors_5_winner <- pred_vals_5_winner - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="Multi-period-ahead forecast - Competitors + S&P500", xlab="Days ahead", ylab="Returns")
-lines(pred_vals_5_winner, type="l", pch=22, lty=2, col="red")
+plot(pred_vals_5_winner, type="l",col="black", main="Multi-period-ahead forecast - Competitors + S&P500", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
@@ -1179,8 +1179,8 @@ accuracy(pred_vals_5_winner, as.numeric(MSFT_daily_ret_test))
 pred.vals.5.runner_up <- predict.n(model_runner_up, df_runner_up, training_dataset_length, 5)
 errors_5_runner_up <- pred.vals.5.runner_up - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="Multi-period-ahead forecast - IBM & Google", xlab="Days ahead", ylab="Returns")
-lines(pred.vals.5.runner_up, type="l", pch=22, lty=2, col="red")
+plot(pred.vals.5.runner_up, type="l",col="black", main="Multi-period-ahead forecast - IBM & Google", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
@@ -1194,8 +1194,8 @@ accuracy(pred.vals.5.runner_up, as.numeric(MSFT_daily_ret_test))
 pred.vals.5.third <- predict.n(model_third, df_third, training_dataset_length, 5)
 errors_5_third <- pred.vals.5.third - as.numeric(MSFT_daily_ret_test)
 
-plot(as.numeric(MSFT_daily_ret_test), type="l",col="black", main="Multi-period-ahead forecast - Google & 3M", xlab="Days ahead", ylab="Returns")
-lines(pred.vals.5.third, type="l", pch=22, lty=2, col="red")
+plot(pred.vals.5.third, type="l",col="black", main="Multi-period-ahead forecast - Google & 3M", xlab="Days ahead", ylab="Returns")
+lines(as.numeric(MSFT_daily_ret_test), type="l", pch=22, lty=2, col="red")
 ```
 
 ```{r, echo=FALSE}
