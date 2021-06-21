@@ -5,6 +5,6 @@
 .Ruserdata
 
 # RStudio Knit outputs
-#*.html
+*.html
 *.pdf
 *.docx
